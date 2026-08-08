@@ -15,6 +15,7 @@ from tau2.data_model.simulation import (
 from tau2.environment.environment import EnvironmentInfo
 from tau2.runner.helpers import get_tasks
 
+from codex_tau.agent import CodexTauAgent
 from codex_tau.manifest import ManifestError, read_manifest, write_manifest
 
 
@@ -74,6 +75,13 @@ def test_tau_messages_and_fake_trajectory_round_trip(tmp_path: Path) -> None:
     assert loaded.simulations[0].messages[2].id == "call-1"
 
 
+def test_standard_fresh_conversation_greeting_is_accepted() -> None:
+    agent = object.__new__(CodexTauAgent)
+    greeting = AssistantMessage.text("Hi! How can I help you today?")
+    state = agent.get_init_state([greeting])
+    assert state.messages == [greeting]
+
+
 def test_manifest_round_trip_and_secret_rejection(tmp_path: Path) -> None:
     path = tmp_path / "manifest.json"
     manifest = {
@@ -86,4 +94,3 @@ def test_manifest_round_trip_and_secret_rejection(tmp_path: Path) -> None:
         write_manifest(path, {"api_key": "do-not-write-this"})
     with pytest.raises(ManifestError, match="secret-looking"):
         write_manifest(path, {"value": "sk-abcdefghijklmnop"})
-

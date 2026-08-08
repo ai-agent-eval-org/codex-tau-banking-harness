@@ -7,7 +7,11 @@ from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, Field
-from tau2.agent.base_agent import HalfDuplexAgent, ValidAgentInputMessage
+from tau2.agent.base_agent import (
+    HalfDuplexAgent,
+    ValidAgentInputMessage,
+    is_valid_agent_history_message,
+)
 from tau2.data_model.message import (
     AssistantMessage,
     Message,
@@ -52,9 +56,18 @@ class CodexTauAgent(HalfDuplexAgent[CodexAgentState]):
     def get_init_state(
         self, message_history: list[Message] | None = None
     ) -> CodexAgentState:
-        if message_history:
-            raise ValueError("CodexTauAgent requires a fresh app-server thread")
-        return CodexAgentState()
+        history = list(message_history or [])
+        if not all(is_valid_agent_history_message(message) for message in history):
+            raise ValueError("invalid initial τ-bench agent history")
+        # A fresh half-duplex simulation begins with τ-bench's standard assistant
+        # greeting. The isolated Codex thread begins on the following user turn;
+        # retaining the greeting here keeps the official trajectory serializable.
+        if len(history) > 1 or any(
+            isinstance(message, AssistantMessage) and message.is_tool_call()
+            for message in history
+        ):
+            raise ValueError("CodexTauAgent does not resume prior tool conversations")
+        return CodexAgentState(messages=history)
 
     def generate_next_message(
         self, message: ValidAgentInputMessage, state: CodexAgentState
@@ -124,4 +137,3 @@ def create_codex_tau_agent(
         prompt=prompt,
         audit_path=audit_dir / f"{task.id}.json",
     )
-
