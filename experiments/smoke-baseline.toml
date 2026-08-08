@@ -1,0 +1,23 @@
+[experiment]
+name = "smoke-baseline"
+arm = "baseline"
+prompt_path = "prompts/banking_knowledge/baseline.md"
+domain = "banking_knowledge"
+retrieval = "alltools"
+agent_model = "gpt-5.4"
+agent_reasoning = "xhigh"
+user_model = "gpt-5.2"
+user_reasoning = "low"
+seed = 300
+trials_per_task = 1
+task_ids = ["task_001", "task_004"]
+
+[experttrace]
+project_id = "8ed181fd-efd2-4a35-be63-77da3ab2001a"
+workspace = "banking-knowledge-smoke"
+workspace_branch = "workspaces/8ed181fd-efd2-4a35-be63-77da3ab2001a/6340040dcd3fb89a"
+optimization_id = ""
+candidate_branch = ""
+source_commit = "PENDING"
+source_path = "AGENTS.md"
+

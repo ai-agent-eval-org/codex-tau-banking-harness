@@ -1,0 +1,44 @@
+[build-system]
+requires = ["hatchling==1.27.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "codex-tau-banking-harness"
+version = "0.1.0"
+description = "Minimal Codex app-server adapter for tau2 banking_knowledge"
+readme = "README.md"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+  "audioop-lts==0.2.2; python_version >= '3.13'",
+  "jsonschema==4.25.1",
+  "tau2[knowledge]==1.0.1",
+]
+
+[project.scripts]
+codex-tau = "codex_tau.run:main"
+
+[dependency-groups]
+dev = [
+  "pytest==8.4.2",
+  "ruff==0.12.11",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/codex_tau"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.uv.sources]
+tau2 = { path = "vendor/tau2-bench", editable = true }
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]

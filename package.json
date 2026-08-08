@@ -1,0 +1,17 @@
+{
+  "name": "codex-tau-banking-harness",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Pinned Codex executable for the tau2 banking harness",
+  "dependencies": {
+    "@openai/codex": "0.144.6"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "codex:version": "codex --version",
+    "codex:schema": "codex app-server generate-json-schema --experimental --out codex/schema"
+  }
+}
+
