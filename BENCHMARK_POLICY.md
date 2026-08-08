@@ -34,11 +34,11 @@ Fresh authorization adds three exact, local-only `alltools` matrices:
    only after its one-shot prompt has been authored exclusively from the fresh
    vanilla train traces and frozen by repo-relative path and SHA-256.
 
-The third experiment and its prompt artifact deliberately do not exist yet.
-They must not be authored until the first matrix has produced the authorized
-train traces. In all cases, test trajectories must not feed prompt optimization,
-and test output remains aggregate-only during development. The
-authorization does not cover extra trials, other task IDs, concurrency above
-16, one combined 97-task run, or any submission. Any future expansion must
-preserve the personal-ChatGPT/Platform billing boundary and remain local by
-default.
+The third experiment and its prompt artifact were authored only after the first
+matrix produced the authorized train traces. Their train-only derivation,
+fixed path, and SHA-256 are recorded in `PROMPT_OPTIMIZATION.md`. Test
+output remains aggregate-only. In all cases, test trajectories must not feed prompt optimization.
+The authorization does not cover extra trials, other task IDs,
+concurrency above 16, one combined 97-task run, or any submission. Any future
+expansion must preserve the personal-ChatGPT/Platform billing boundary and
+remain local by default.

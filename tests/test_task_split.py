@@ -6,6 +6,7 @@ from pathlib import Path
 
 from tau2.runner.helpers import get_tasks
 
+from codex_tau.prompt import OPTIMIZED_AGENT_INSTRUCTION_PATH, prompt_hash
 from codex_tau.run import (
     OPTIMIZED_TEST_EXPERIMENT,
     PILOT2_TASK_IDS,
@@ -131,7 +132,7 @@ def test_fresh_alltools_vanilla_matrices_are_exactly_frozen() -> None:
         assert "agent_instruction_sha256" not in experiment
 
 
-def test_future_optimized_test_is_allowlisted_but_not_authored() -> None:
+def test_optimized_test_is_exactly_frozen_and_hash_pinned() -> None:
     authorization = _authorized_experiments()[OPTIMIZED_TEST_EXPERIMENT]
     assert authorization == {
         "profile": "alltools_optimized_trial0",
@@ -142,8 +143,29 @@ def test_future_optimized_test_is_allowlisted_but_not_authored() -> None:
         "max_concurrency": 16,
         "prompt_mode": "train_trace_one_shot_agent_instruction",
     }
-    assert not (REPO_ROOT / f"experiments/{OPTIMIZED_TEST_EXPERIMENT}.toml").exists()
-    assert not (
-        REPO_ROOT
-        / "prompts/banking_knowledge/optimized-agent-instruction.md"
-    ).exists()
+
+    experiment = load_experiment(
+        REPO_ROOT / f"experiments/{OPTIMIZED_TEST_EXPERIMENT}.toml"
+    )
+    artifact = REPO_ROOT / OPTIMIZED_AGENT_INSTRUCTION_PATH
+    assert experiment["name"] == OPTIMIZED_TEST_EXPERIMENT
+    assert experiment["profile"] == "alltools_optimized_trial0"
+    assert experiment["task_partition"] == "test"
+    assert tuple(experiment["task_ids"]) == TEST_TASK_IDS
+    assert experiment["retrieval"] == "alltools"
+    assert experiment["agent_model"] == "gpt-5.4"
+    assert experiment["agent_reasoning"] == "high"
+    assert experiment["user_model"] == "gpt-5.2"
+    assert experiment["user_reasoning"] == "low"
+    assert experiment["trials_per_task"] == 1
+    assert experiment["max_steps"] == 200
+    assert experiment["max_concurrency"] == 16
+    assert experiment["agent_instruction_path"] == (
+        OPTIMIZED_AGENT_INSTRUCTION_PATH.as_posix()
+    )
+    assert experiment["agent_instruction_sha256"] == prompt_hash(
+        artifact.read_bytes()
+    )
+    assert experiment["agent_instruction_sha256"] == (
+        "dddd25c976a631e2559c6afefc90582328ae0ca9bc78be07e565ea53e47717c9"
+    )

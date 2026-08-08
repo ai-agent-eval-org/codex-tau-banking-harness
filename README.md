@@ -44,14 +44,14 @@ have no custom prompt artifact. The reference profile uses τ-bench's
 unmodified `alltools` policy and toolkit, including its official BM25,
 dense-search, and shell tools.
 
-The future optimized-test arm is fail-closed around one substitution only. It
+The optimized-test arm is fail-closed around one substitution only. It
 may load a nonempty UTF-8 replacement for `AGENT_INSTRUCTION` from exactly
-`prompts/banking_knowledge/optimized-agent-instruction.md`, and its experiment
+`prompts/banking_knowledge/optimized.md`, and its experiment
 must pin the artifact's SHA-256. The harness still renders τ-bench's unmodified
 `SYSTEM_PROMPT` with the authoritative runtime `alltools` domain policy. Custom
 policy text, alternate prompt paths, extra fields, and developer instructions
-are rejected. The artifact and optimized config are intentionally absent until
-fresh train traces exist.
+are rejected. The train-only derivation and fixed hash are documented in
+[PROMPT_OPTIMIZATION.md](PROMPT_OPTIMIZATION.md).
 
 Codex runs from an empty temporary directory and a temporary `CODEX_HOME` that
 contains only the benchmark configuration and a link to the user's existing
@@ -244,9 +244,14 @@ the fixed artifact, record its SHA-256 in a separately named
 `optimized-test-alltools` config, freeze both, and run the 49-task test once.
 
 Do not inspect the vanilla or optimized test trajectories for prompt feedback.
-The optimized artifact and config are intentionally not present in this phase;
-the harness rejects an optimized run until both exist at the fixed path and
-their hashes match.
+The frozen artifact, its derivation report, and the bounded config are now
+present. The harness rejects the optimized experiment if its fixed path or hash
+changes. The authorized commands, when execution is separately intended, are:
+
+```bash
+uv run codex-tau preflight experiments/optimized-test-alltools.toml
+uv run codex-tau run experiments/optimized-test-alltools.toml
+```
 
 ## Frozen test run
 

@@ -8,6 +8,7 @@ from codex_tau.run import ExperimentError, load_experiment
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SOURCE = REPO_ROOT / "experiments/vanilla-train-alltools.toml"
+OPTIMIZED_SOURCE = REPO_ROOT / "experiments/optimized-test-alltools.toml"
 
 
 def write_experiment(tmp_path: Path, text: str) -> Path:
@@ -59,4 +60,29 @@ def test_experiment_filename_must_match_fixed_name(tmp_path: Path) -> None:
     path = tmp_path / "renamed.toml"
     path.write_text(SOURCE.read_text())
     with pytest.raises(ExperimentError, match="filename"):
+        load_experiment(path)
+
+
+@pytest.mark.parametrize(
+    ("old", "new"),
+    [
+        (
+            'agent_instruction_path = "prompts/banking_knowledge/optimized.md"',
+            'agent_instruction_path = "prompts/banking_knowledge/other.md"',
+        ),
+        (
+            'agent_instruction_sha256 = '
+            '"dddd25c976a631e2559c6afefc90582328ae0ca9bc78be07e565ea53e47717c9"',
+            'agent_instruction_sha256 = '
+            '"0000000000000000000000000000000000000000000000000000000000000000"',
+        ),
+    ],
+)
+def test_optimized_matrix_rejects_prompt_provenance_changes(
+    tmp_path: Path, old: str, new: str
+) -> None:
+    changed = OPTIMIZED_SOURCE.read_text().replace(old, new, 1)
+    path = tmp_path / OPTIMIZED_SOURCE.name
+    path.write_text(changed)
+    with pytest.raises(ExperimentError, match="optimized prompt fields"):
         load_experiment(path)

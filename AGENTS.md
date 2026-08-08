@@ -79,7 +79,7 @@ task_102
   have no custom prompt artifact or additional developer instructions. The only
   authorized optimized form replaces `AGENT_INSTRUCTION` from the fixed,
   repo-relative UTF-8 artifact path
-  `prompts/banking_knowledge/optimized-agent-instruction.md`, pinned by SHA-256,
+  `prompts/banking_knowledge/optimized.md`, pinned by SHA-256,
   while rendering the unmodified τ-bench `SYSTEM_PROMPT` with the authoritative
   `alltools` policy. Additional developer instructions are forbidden.
 - Keep task IDs, trial counts, and concurrency explicit. The two authorized
@@ -90,10 +90,10 @@ task_102
   one separately named optimized `alltools` test trial over the same 49 test IDs
   at concurrency 16. It does not authorize extra trials, different tasks,
   concurrency above 16, a combined 97-task run, or submission.
-- Do not create the optimized prompt artifact or optimized experiment config
-  before the fresh vanilla train run has completed. The prompt must be derived
-  only from those train traces, then its repo-relative path and SHA-256 must be
-  fixed before the optimized test starts.
+- The optimized prompt artifact and experiment config may be authored only
+  after the fresh vanilla train run has completed. The prompt must be derived
+  only from those train traces, then its repo-relative path and SHA-256 must
+  remain fixed before and after the optimized test.
 - Do not commit raw runs, credentials, embedding caches, or large artifacts.
 - `task_002` and `task_008` were exposed during infrastructure diagnosis on
   2026-08-08. Future held-out claims that include them must disclose that

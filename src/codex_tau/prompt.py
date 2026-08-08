@@ -13,7 +13,7 @@ from tau2.agent.llm_agent import AGENT_INSTRUCTION, SYSTEM_PROMPT
 STANDARD_PROMPT_MODE = "tau2_standard_llm_agent"
 OPTIMIZED_PROMPT_MODE = "train_trace_one_shot_agent_instruction"
 OPTIMIZED_AGENT_INSTRUCTION_PATH = Path(
-    "prompts/banking_knowledge/optimized-agent-instruction.md"
+    "prompts/banking_knowledge/optimized.md"
 )
 _SHA256 = re.compile(r"[0-9a-f]{64}")
 

@@ -46,7 +46,7 @@ def test_optimized_artifact_path_is_fixed_and_repo_relative(tmp_path: Path) -> N
     _, digest = write_artifact(tmp_path, b"instruction")
     for rejected in (
         "prompts/other.md",
-        "../optimized-agent-instruction.md",
+        "../optimized.md",
         str((tmp_path / OPTIMIZED_AGENT_INSTRUCTION_PATH).resolve()),
     ):
         with pytest.raises(PromptError, match="path must be exactly"):
