@@ -22,8 +22,9 @@ In particular:
 
 The repository intentionally provides `preflight` and bounded local `run`
 commands only. It provides no leaderboard submission command. Authorized
-experiment files are restricted to the two-task smoke set or the exact frozen
-49-task test partition in `AGENTS.md`, with one trial per task. The test run is
-local-only; test trajectories must not feed prompt optimization. Any future
-expansion must use explicit task IDs and trial counts, preserve the
+experiment files are restricted to the two-task smoke set, the explicit
+five-task alltools infrastructure pilot, or the exact frozen 49-task test
+partition in `AGENTS.md`, with one trial per task. The test run is local-only;
+test trajectories must not feed prompt optimization. Any future expansion must
+use explicit task IDs and trial counts, preserve the
 personal-ChatGPT/Platform billing boundary, and remain local by default.

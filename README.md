@@ -6,8 +6,9 @@ This repository is a minimal, fail-closed adapter between the official
 `0.147.0`.
 
 The evaluated agent uses a personal ChatGPT/Codex login. The parent τ-bench
-process may use `OPENAI_API_KEY` only for the official GPT-5.2 user simulator.
-The `terminal_use` reference profile does not use embeddings. The child Codex process is launched with a
+process may use `OPENAI_API_KEY` only for the official GPT-5.2 user simulator
+and, in the optional `alltools` pilot, OpenAI embeddings. The `terminal_use`
+reference profile does not use embeddings. The child Codex process is launched with a
 sanitized environment and must report a ChatGPT account before a simulation can
 start.
 
@@ -38,8 +39,9 @@ native shell.
 The harness imports τ-bench's own `AGENT_INSTRUCTION` and `SYSTEM_PROMPT` and
 uses that exact rendered string as the app-server base instructions. It supplies
 an explicit empty developer-instruction string and has no custom prompt artifact.
-The active profile therefore contains none of the prior BM25/dense retrieval or
-shell-bounding encouragement.
+The reference profile uses τ-bench's `terminal_use` policy. The separately
+labeled pilot uses τ-bench's unmodified `alltools` policy and adds its official
+BM25 and dense-search tools; it adds no harness-authored prompting.
 
 Codex runs from an empty temporary directory and a temporary `CODEX_HOME` that
 contains only the benchmark configuration and a link to the user's existing
@@ -146,8 +148,25 @@ uv run codex-tau run experiments/smoke-reference.toml
 ```
 
 `preflight` performs no model inference. `run` refuses any task list other than
-the two fixed smoke tasks or the frozen 49-task test partition, and refuses
-trial counts other than one.
+the two fixed smoke tasks, the predeclared five-task pilot, or the frozen
+49-task test partition, and refuses trial counts other than one.
+
+## Five-task alltools pilot
+
+The optional pilot uses the first five IDs of the already-frozen test ordering:
+`task_002`, `task_008`, `task_010`, `task_012`, and `task_014`. It preserves the
+model, reasoning, simulator, seed, trial count, and step limit, but deliberately
+switches retrieval to τ-bench's `alltools` profile:
+
+```bash
+uv run codex-tau preflight experiments/pilot5-alltools.toml
+uv run codex-tau run experiments/pilot5-alltools.toml
+```
+
+It runs serially because parallel ChatGPT-authenticated app-server
+continuations stalled in local verification. This pilot is not comparable to
+the external `terminal_use` result. See [PILOT_STATUS.md](PILOT_STATUS.md) for
+the latest execution evidence.
 
 ## Frozen test run
 

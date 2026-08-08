@@ -20,7 +20,10 @@ from tau2.domains.banking_knowledge.environment import (
     get_knowledge_base,
 )
 from tau2.domains.banking_knowledge.retrieval import get_info_policy_override
-from tau2.domains.banking_knowledge.retrieval_toolkits import KnowledgeToolsWithShell
+from tau2.domains.banking_knowledge.retrieval_toolkits import (
+    KnowledgeToolsAllTools,
+    KnowledgeToolsWithShell,
+)
 from tau2.registry import registry
 from tau2.runner.batch import run_tasks
 from tau2.runner.helpers import get_tasks
@@ -46,6 +49,7 @@ from .tool_bridge import ToolCatalog
 TAU_TAG = "v1.0.1"
 TAU_COMMIT = "fc0055dc4e0a316c3f83133267fbd6faaa770992"
 SMOKE_TASK_IDS = ("task_001", "task_004")
+PILOT5_TASK_IDS = TEST_TASK_IDS[:5]
 AGENT_NAME = "codex_tau_dynamic"
 
 
@@ -63,7 +67,7 @@ def _sha256_text(value: str) -> str:
 
 def _show_per_task_console(task_partition: str) -> bool:
     """Keep held-out task outcomes out of prompt-development feedback."""
-    if task_partition not in {"smoke", "test"}:
+    if task_partition not in {"smoke", "pilot5", "test"}:
         raise ExperimentError(f"unknown task partition: {task_partition!r}")
     return task_partition == "smoke"
 
@@ -79,9 +83,7 @@ def load_experiment(path: Path) -> dict[str, Any]:
     if not isinstance(experiment, dict):
         raise ExperimentError("experiment TOML needs [experiment]")
     required = {
-        "profile": "tau_reference_trial0",
         "domain": "banking_knowledge",
-        "retrieval": "terminal_use",
         "agent_model": "gpt-5.4",
         "agent_reasoning": "high",
         "user_model": "gpt-5.2",
@@ -96,15 +98,32 @@ def load_experiment(path: Path) -> dict[str, Any]:
             raise ExperimentError(
                 f"{key} must remain {expected!r}, got {experiment.get(key)!r}"
             )
+    profiles = {
+        "tau_reference_trial0": "terminal_use",
+        "alltools_pilot_trial0": "alltools",
+    }
+    profile = experiment.get("profile")
+    expected_retrieval = profiles.get(profile)
+    if expected_retrieval is None:
+        raise ExperimentError(f"unknown experiment profile: {profile!r}")
+    if experiment.get("retrieval") != expected_retrieval:
+        raise ExperimentError(
+            f"retrieval must be {expected_retrieval!r} for {profile!r}"
+        )
     partition = experiment.get("task_partition")
     if partition == "smoke":
         authorized_task_ids = SMOKE_TASK_IDS
         expected_concurrency = 1
+    elif partition == "pilot5":
+        authorized_task_ids = PILOT5_TASK_IDS
+        expected_concurrency = 1
     elif partition == "test":
         authorized_task_ids = TEST_TASK_IDS
-        expected_concurrency = 4
+        expected_concurrency = 1
     else:
-        raise ExperimentError("task_partition must be smoke or test")
+        raise ExperimentError(
+            "task_partition must be smoke, pilot5, or test"
+        )
     if experiment.get("task_ids") != list(authorized_task_ids):
         raise ExperimentError(
             f"task_ids must equal the frozen {partition} task list"
@@ -125,6 +144,22 @@ def _terminal_contract() -> tuple[list[Any], str]:
     tools = list(toolkit.get_tools().values())
     policy = get_info_policy_override("terminal_use", get_knowledge_base())
     return tools, policy
+
+
+def _alltools_contract() -> tuple[list[Any], str]:
+    """Build alltools schemas without constructing live retrieval runtimes."""
+    toolkit = KnowledgeToolsAllTools(get_db(), object(), object(), object())
+    tools = list(toolkit.get_tools().values())
+    policy = get_info_policy_override("alltools", get_knowledge_base())
+    return tools, policy
+
+
+def _retrieval_contract(retrieval: str) -> tuple[list[Any], str]:
+    if retrieval == "terminal_use":
+        return _terminal_contract()
+    if retrieval == "alltools":
+        return _alltools_contract()
+    raise ExperimentError(f"unsupported retrieval profile: {retrieval!r}")
 
 
 def _require_parent_prerequisites() -> dict[str, str]:
@@ -157,7 +192,7 @@ def preflight(
     tasks = get_tasks("banking_knowledge", task_split_name=None, task_ids=task_ids)
     if tuple(task.id for task in tasks) != task_ids:
         raise ExperimentError("τ-bench returned a different frozen task ordering")
-    tools, policy = _terminal_contract()
+    tools, policy = _retrieval_contract(experiment["retrieval"])
     catalog = ToolCatalog(tools)
     system_prompt = standard_system_prompt(policy)
     runtime = CodexAppServer(

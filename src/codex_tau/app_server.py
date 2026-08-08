@@ -35,6 +35,7 @@ class ProtocolError(RuntimeError):
 
 _ALLOWED_ITEM_TYPES = {"userMessage", "agentMessage", "reasoning", "dynamicToolCall"}
 TURN_OUTPUT_TIMEOUT_SECONDS = 600
+TURN_OUTPUT_IDLE_TIMEOUT_SECONDS = 120
 
 
 def reject_native_item(item: Mapping[str, Any]) -> None:
@@ -265,7 +266,7 @@ class CodexAppServer:
             "model/list", {"includeHidden": True, "limit": 100}
         )
         self.audit["model"] = require_model_catalog(model_result)
-        rate_limits = self.transport.request("account/rateLimits/read")
+        rate_limits = self._read_rate_limits()
         buckets = rate_limits.get("rateLimitsByLimitId") if isinstance(rate_limits, Mapping) else None
         self.audit["rate_limit_ids"] = sorted(buckets) if isinstance(buckets, Mapping) else []
 
@@ -307,6 +308,17 @@ class CodexAppServer:
         self.audit["instruction_sources"] = []
         self.audit["observed_thread_model"] = observed_model
         self._checkpoint("thread/start:accepted")
+
+    def _read_rate_limits(self) -> Any:
+        """Retry transient ChatGPT metadata failures before starting a task."""
+        for attempt in range(3):
+            try:
+                return self.transport.request("account/rateLimits/read")
+            except ProtocolError:
+                if attempt == 2:
+                    raise
+                time.sleep(0.5 * (2**attempt))
+        raise AssertionError("unreachable")
 
     def start_turn(self, user_text: str) -> tuple[str | list[ToolCall], bool]:
         if not self._thread_id:
@@ -351,10 +363,12 @@ class CodexAppServer:
         self, timeout: float = TURN_OUTPUT_TIMEOUT_SECONDS
     ) -> tuple[str | list[ToolCall], bool]:
         deadline = time.monotonic() + timeout
+        idle_deadline = time.monotonic() + TURN_OUTPUT_IDLE_TIMEOUT_SECONDS
         calls: list[ToolCall] = []
         while True:
             remaining = deadline - time.monotonic()
-            if remaining <= 0:
+            idle_remaining = idle_deadline - time.monotonic()
+            if remaining <= 0 or idle_remaining <= 0:
                 timeout_after = self.audit["last_protocol_method"]
                 self.audit["app_server_stderr_line_count"] = getattr(
                     self.transport, "stderr_line_count", 0
@@ -362,16 +376,20 @@ class CodexAppServer:
                 self.audit["timeout_after_protocol_method"] = timeout_after
                 self._checkpoint("turn/output:timed_out")
                 raise ProtocolError(
-                    "timed out waiting for Codex turn output after "
-                    f"{timeout:g}s; last protocol method was "
+                    "timed out waiting for Codex turn output; "
+                    f"hard limit={timeout:g}s, idle limit="
+                    f"{TURN_OUTPUT_IDLE_TIMEOUT_SECONDS:g}s; last protocol method was "
                     f"{timeout_after!r}"
                 )
             try:
-                message = self.transport.inbox.get(timeout=min(remaining, 0.25))
+                message = self.transport.inbox.get(
+                    timeout=min(remaining, idle_remaining, 0.25)
+                )
             except queue.Empty:
                 if calls:
                     return calls, False
                 continue
+            idle_deadline = time.monotonic() + TURN_OUTPUT_IDLE_TIMEOUT_SECONDS
             if "transportError" in message:
                 raise ProtocolError(str(message["transportError"]))
             method = message.get("method")

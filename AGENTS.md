@@ -60,9 +60,16 @@ task_102
   schemas, GPT-5.4/high through personal ChatGPT authentication, 200 maximum
   steps, and GPT-5.2/low for the official user simulator. The Platform API key
   may be used only by the simulator, never by Codex.
+- The separately named `pilot5-alltools` experiment is authorized only for the
+  five explicit IDs in its TOML file. It may use the Platform key for official
+  OpenAI embeddings as well as the GPT-5.2 simulator, but never for evaluated
+  Codex inference. Never label it reference-comparable.
 - A custom or optimized prompt is a separately named experiment and must never
   be represented as reference-comparable. The reference profile has no custom
   prompt artifact or additional developer instructions.
 - Keep task IDs and trial counts explicit. Do not run all 97 tasks or add trials
   without fresh authorization for that exact local cost scope.
 - Do not commit raw runs, credentials, embedding caches, or large artifacts.
+- `task_002` and `task_008` were exposed during infrastructure diagnosis on
+  2026-08-08. Future held-out claims that include them must disclose that
+  contamination; do not use their diagnostics for prompt optimization.

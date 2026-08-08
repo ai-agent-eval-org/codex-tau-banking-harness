@@ -12,7 +12,7 @@ trials_per_task = 1
 max_steps = 200
 max_errors = 10
 task_partition = "test"
-max_concurrency = 4
+max_concurrency = 1
 task_ids = [
   "task_002",
   "task_008",

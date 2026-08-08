@@ -1,0 +1,22 @@
+[experiment]
+name = "pilot5-alltools"
+profile = "alltools_pilot_trial0"
+domain = "banking_knowledge"
+retrieval = "alltools"
+agent_model = "gpt-5.4"
+agent_reasoning = "high"
+user_model = "gpt-5.2"
+user_reasoning = "low"
+seed = 300
+trials_per_task = 1
+max_steps = 200
+max_errors = 10
+task_partition = "pilot5"
+max_concurrency = 1
+task_ids = [
+  "task_002",
+  "task_008",
+  "task_010",
+  "task_012",
+  "task_014",
+]
