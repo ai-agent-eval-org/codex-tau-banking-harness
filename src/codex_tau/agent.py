@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -32,6 +33,11 @@ class CodexAgentState(BaseModel):
     messages: list[Message] = Field(default_factory=list)
 
 
+def audit_filename(task_id: str, seed: int) -> str:
+    """Return the stable per-trajectory audit filename."""
+    return f"{task_id}--seed-{seed}.json"
+
+
 class CodexTauAgent(HalfDuplexAgent[CodexAgentState]):
     """Translate participant messages without executing any tool itself."""
 
@@ -41,10 +47,12 @@ class CodexTauAgent(HalfDuplexAgent[CodexAgentState]):
         tools: list[Tool],
         domain_policy: str,
         repo_root: Path,
+        task_id: str,
         audit_path: Path,
         runtime_factory: type[CodexAppServer] = CodexAppServer,
     ):
         super().__init__(tools=tools, domain_policy=domain_policy)
+        self.task_id = task_id
         self.audit_path = audit_path
         self.runtime = runtime_factory(
             repo_root=repo_root,
@@ -52,6 +60,8 @@ class CodexTauAgent(HalfDuplexAgent[CodexAgentState]):
             system_prompt=standard_system_prompt(domain_policy),
             audit_sink=self._write_audit,
         )
+        self.runtime.audit["task_id"] = task_id
+        self._checkpoint("agent_initialized")
 
     def _write_audit(self, audit: dict[str, Any]) -> None:
         self.audit_path.parent.mkdir(parents=True, exist_ok=True)
@@ -62,6 +72,17 @@ class CodexTauAgent(HalfDuplexAgent[CodexAgentState]):
     def _checkpoint(self, stage: str) -> None:
         self.runtime.audit["adapter_stage"] = stage
         self._write_audit(self.runtime.audit)
+
+    def set_seed(self, seed: int) -> None:
+        """Bind the audit to τ-bench's per-trial simulation seed."""
+        final_path = self.audit_path.parent / audit_filename(self.task_id, seed)
+        if final_path.exists() and final_path != self.audit_path:
+            raise ValueError(f"duplicate audit path for {self.task_id} seed {seed}")
+        if self.audit_path.exists() and final_path != self.audit_path:
+            self.audit_path.replace(final_path)
+        self.audit_path = final_path
+        self.runtime.audit["simulation_seed"] = seed
+        self._checkpoint("seed_assigned")
 
     def get_init_state(
         self, message_history: list[Message] | None = None
@@ -137,9 +158,11 @@ def create_codex_tau_agent(
         raise ValueError("Codex agent factory requires task and llm_args")
     repo_root = Path(str(llm_args["repo_root"])).resolve()
     audit_dir = Path(str(llm_args["audit_dir"])).resolve()
+    pending_audit = audit_dir / f"{task.id}--pending-{uuid.uuid4().hex}.json"
     return CodexTauAgent(
         tools=tools,
         domain_policy=domain_policy,
         repo_root=repo_root,
-        audit_path=audit_dir / f"{task.id}.json",
+        task_id=task.id,
+        audit_path=pending_audit,
     )

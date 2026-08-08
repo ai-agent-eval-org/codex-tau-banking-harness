@@ -154,26 +154,38 @@ uv run codex-tau preflight experiments/smoke-reference.toml
 uv run codex-tau run experiments/smoke-reference.toml
 ```
 
-`preflight` performs no model inference. `run` refuses any task list other than
-the two fixed smoke tasks, the predeclared five-task pilot, or the frozen
-49-task test partition, and refuses trial counts other than one.
+`preflight` performs no model inference. `run` accepts only the exact task,
+trial, and concurrency combinations declared below or the frozen 49-task
+single-trial reference partition.
+
+## Two-task alltools concurrency validation
+
+The concurrency ramp begins with `task_002` and `task_008`, four trials each,
+and two workers. Audits use the per-trial simulation seed in their filenames so
+same-task trials cannot overwrite one another:
+
+```bash
+uv run codex-tau preflight experiments/pilot2-alltools-concurrency2.toml
+uv run codex-tau run experiments/pilot2-alltools-concurrency2.toml
+```
 
 ## Five-task alltools pilot
 
 The optional pilot uses the first five IDs of the already-frozen test ordering:
-`task_002`, `task_008`, `task_010`, `task_012`, and `task_014`. It preserves the
-model, reasoning, simulator, seed, trial count, and step limit, but deliberately
-switches retrieval to τ-bench's `alltools` profile:
+`task_002`, `task_008`, `task_010`, `task_012`, and `task_014`. It runs four
+trials per task with up to eight concurrent workers while preserving the model,
+reasoning, simulator, seed, and step limit. It deliberately uses τ-bench's
+`alltools` profile:
 
 ```bash
 uv run codex-tau preflight experiments/pilot5-alltools.toml
 uv run codex-tau run experiments/pilot5-alltools.toml
 ```
 
-It runs serially because parallel ChatGPT-authenticated app-server
-continuations stalled in local verification. This pilot is not comparable to
-the external `terminal_use` result. See [PILOT_STATUS.md](PILOT_STATUS.md) for
-the latest execution evidence.
+Run it only after the two-task concurrency validation completes without an
+infrastructure error. This pilot is not comparable to the external
+`terminal_use` result. See [PILOT_STATUS.md](PILOT_STATUS.md) for the latest
+execution evidence.
 
 ## Frozen test run
 
@@ -203,8 +215,9 @@ pinned τ-bench v1.0.1 data.
 
 ## Artifacts and leaderboard scope
 
-Local output is written below `runs/<experiment>-<timestamp>/` and includes τ-bench's
-`results.json`, per-task adapter audits, and `manifest.json`. Everything below
+Local output is written below `runs/<experiment>-<timestamp>/` and includes
+τ-bench's incrementally checkpointed `results.json`, one per-trajectory adapter
+audit keyed by task and simulation seed, and `manifest.json`. Everything below
 `runs/` except `.gitkeep` is ignored. The 410 MiB reference result, auth state,
 raw databases, embedding caches, and credentials are never copied or committed.
 

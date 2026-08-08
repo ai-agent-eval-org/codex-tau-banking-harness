@@ -28,7 +28,7 @@ from tau2.registry import registry
 from tau2.runner.batch import run_tasks
 from tau2.runner.helpers import get_tasks
 
-from .agent import create_codex_tau_agent
+from .agent import audit_filename, create_codex_tau_agent
 from .app_server import APP_SERVER_STREAM_READER_LIMIT_BYTES, CodexAppServer
 from .auth import CODEX_VERSION
 from .manifest import write_manifest
@@ -49,6 +49,7 @@ from .tool_bridge import ToolCatalog
 TAU_TAG = "v1.0.1"
 TAU_COMMIT = "fc0055dc4e0a316c3f83133267fbd6faaa770992"
 SMOKE_TASK_IDS = ("task_001", "task_004")
+PILOT2_TASK_IDS = TEST_TASK_IDS[:2]
 PILOT5_TASK_IDS = TEST_TASK_IDS[:5]
 AGENT_NAME = "codex_tau_dynamic"
 
@@ -67,7 +68,7 @@ def _sha256_text(value: str) -> str:
 
 def _show_per_task_console(task_partition: str) -> bool:
     """Keep held-out task outcomes out of prompt-development feedback."""
-    if task_partition not in {"smoke", "pilot5", "test"}:
+    if task_partition not in {"smoke", "pilot2", "pilot5", "test"}:
         raise ExperimentError(f"unknown task partition: {task_partition!r}")
     return task_partition == "smoke"
 
@@ -89,7 +90,6 @@ def load_experiment(path: Path) -> dict[str, Any]:
         "user_model": "gpt-5.2",
         "user_reasoning": "low",
         "seed": 300,
-        "trials_per_task": 1,
         "max_steps": 200,
         "max_errors": 10,
     }
@@ -100,7 +100,8 @@ def load_experiment(path: Path) -> dict[str, Any]:
             )
     profiles = {
         "tau_reference_trial0": "terminal_use",
-        "alltools_pilot_trial0": "alltools",
+        "alltools_concurrency_validation_4trials": "alltools",
+        "alltools_pilot_4trials": "alltools",
     }
     profile = experiment.get("profile")
     expected_retrieval = profiles.get(profile)
@@ -113,21 +114,34 @@ def load_experiment(path: Path) -> dict[str, Any]:
     partition = experiment.get("task_partition")
     if partition == "smoke":
         authorized_task_ids = SMOKE_TASK_IDS
+        expected_profile = "tau_reference_trial0"
+        expected_trials = 1
         expected_concurrency = 1
+    elif partition == "pilot2":
+        authorized_task_ids = PILOT2_TASK_IDS
+        expected_profile = "alltools_concurrency_validation_4trials"
+        expected_trials = 4
+        expected_concurrency = 2
     elif partition == "pilot5":
         authorized_task_ids = PILOT5_TASK_IDS
-        expected_concurrency = 1
+        expected_profile = "alltools_pilot_4trials"
+        expected_trials = 4
+        expected_concurrency = 8
     elif partition == "test":
         authorized_task_ids = TEST_TASK_IDS
+        expected_profile = "tau_reference_trial0"
+        expected_trials = 1
         expected_concurrency = 1
     else:
+        raise ExperimentError("task_partition must be smoke, pilot2, pilot5, or test")
+    if profile != expected_profile:
+        raise ExperimentError(f"profile must be {expected_profile!r} for {partition!r}")
+    if experiment.get("trials_per_task") != expected_trials:
         raise ExperimentError(
-            "task_partition must be smoke, pilot5, or test"
+            f"trials_per_task must be {expected_trials} for {partition!r}"
         )
     if experiment.get("task_ids") != list(authorized_task_ids):
-        raise ExperimentError(
-            f"task_ids must equal the frozen {partition} task list"
-        )
+        raise ExperimentError(f"task_ids must equal the frozen {partition} task list")
     if experiment.get("max_concurrency") != expected_concurrency:
         raise ExperimentError(
             f"max_concurrency must be {expected_concurrency} for {partition}"
@@ -186,9 +200,7 @@ def preflight(
     repo_root = _repo_root()
     experiment = load_experiment(experiment_path)
     task_ids = tuple(experiment["task_ids"])
-    prerequisites = (
-        _require_parent_prerequisites() if require_platform_key else {}
-    )
+    prerequisites = _require_parent_prerequisites() if require_platform_key else {}
     tasks = get_tasks("banking_knowledge", task_split_name=None, task_ids=task_ids)
     if tuple(task.id for task in tasks) != task_ids:
         raise ExperimentError("τ-bench returned a different frozen task ordering")
@@ -214,6 +226,9 @@ def preflight(
         "task_partition": experiment["task_partition"],
         "task_ids": list(task_ids),
         "task_count": len(task_ids),
+        "trials_per_task": experiment["trials_per_task"],
+        "simulation_count": len(task_ids) * experiment["trials_per_task"],
+        "max_concurrency": experiment["max_concurrency"],
         "local_split_sha256": split_sha256(),
         "prompt_mode": "tau2_standard_llm_agent",
         "agent_instruction_sha256": STANDARD_AGENT_INSTRUCTION_SHA256,
@@ -222,9 +237,7 @@ def preflight(
         "tool_names": list(catalog.names),
         "tool_schema_sha256": catalog.hash,
         "codex_version": CODEX_VERSION,
-        "app_server_stream_reader_limit_bytes": (
-            APP_SERVER_STREAM_READER_LIMIT_BYTES
-        ),
+        "app_server_stream_reader_limit_bytes": (APP_SERVER_STREAM_READER_LIMIT_BYTES),
         "account": runtime_audit["account"],
         "model": runtime_audit["model"],
         "rate_limit_ids": runtime_audit.get("rate_limit_ids", []),
@@ -245,43 +258,80 @@ def _git_head(repo_root: Path) -> str:
 
 
 def _collect_audits(
-    audit_dir: Path, task_ids: tuple[str, ...]
-) -> list[dict[str, Any]]:
+    audit_dir: Path, results: Results
+) -> tuple[list[dict[str, Any]], list[Path]]:
     audits = []
-    for task_id in task_ids:
-        path = audit_dir / f"{task_id}.json"
+    paths = []
+    for simulation in sorted(
+        results.simulations, key=lambda item: (item.task_id, item.trial)
+    ):
+        path = audit_dir / audit_filename(simulation.task_id, simulation.seed)
         if not path.is_file():
-            raise ExperimentError(f"missing adapter audit for {task_id}")
+            raise ExperimentError(
+                f"missing adapter audit for {simulation.task_id} "
+                f"trial {simulation.trial} seed {simulation.seed}"
+            )
         value = json.loads(path.read_text())
         if not isinstance(value, dict):
-            raise ExperimentError(f"malformed adapter audit for {task_id}")
+            raise ExperimentError(f"malformed adapter audit at {path.name}")
+        if value.get("task_id") != simulation.task_id:
+            raise ExperimentError(f"task mismatch in adapter audit {path.name}")
+        if value.get("simulation_seed") != simulation.seed:
+            raise ExperimentError(f"seed mismatch in adapter audit {path.name}")
         audits.append(value)
-    return audits
-
-
-def _validate_results(results: Results, task_ids: tuple[str, ...]) -> None:
-    if len(results.simulations) != len(task_ids):
+        paths.append(path)
+    expected_paths = set(paths)
+    actual_paths = set(audit_dir.glob("*.json"))
+    if actual_paths != expected_paths:
+        extras = sorted(path.name for path in actual_paths - expected_paths)
+        missing = sorted(path.name for path in expected_paths - actual_paths)
         raise ExperimentError(
-            f"expected {len(task_ids)} simulations, got {len(results.simulations)}"
+            f"adapter audit set mismatch; extra={extras}, missing={missing}"
         )
-    result_task_ids = [simulation.task_id for simulation in results.simulations]
-    if len(set(result_task_ids)) != len(result_task_ids):
-        raise ExperimentError("results contain duplicate task IDs")
-    if set(result_task_ids) != set(task_ids):
-        raise ExperimentError("result task IDs differ from the frozen task set")
+    return audits, paths
+
+
+def _validate_results(
+    results: Results, task_ids: tuple[str, ...], trials_per_task: int
+) -> None:
+    expected_count = len(task_ids) * trials_per_task
+    if len(results.simulations) != expected_count:
+        raise ExperimentError(
+            f"expected {expected_count} simulations, got {len(results.simulations)}"
+        )
+    expected_keys = {
+        (task_id, trial) for task_id in task_ids for trial in range(trials_per_task)
+    }
+    actual_keys = [
+        (simulation.task_id, simulation.trial) for simulation in results.simulations
+    ]
+    if len(set(actual_keys)) != len(actual_keys):
+        raise ExperimentError("results contain duplicate task/trial pairs")
+    if set(actual_keys) != expected_keys:
+        raise ExperimentError("result task/trial pairs differ from the experiment")
+    seeds_by_trial: dict[int, set[int]] = {}
     for simulation in results.simulations:
-        if simulation.trial != 0:
-            raise ExperimentError("each task must have exactly one trial")
+        seeds_by_trial.setdefault(simulation.trial, set()).add(simulation.seed)
         if simulation.reward_info is None:
-            raise ExperimentError(f"{simulation.task_id} has no reward")
+            raise ExperimentError(
+                f"{simulation.task_id} trial {simulation.trial} has no reward"
+            )
         if simulation.termination_reason in {
             TerminationReason.INFRASTRUCTURE_ERROR,
             TerminationReason.UNEXPECTED_ERROR,
         }:
             detail = simulation.info.get("error") if simulation.info else None
             raise ExperimentError(
-                f"{simulation.task_id} ended in infrastructure failure: {detail}"
+                f"{simulation.task_id} trial {simulation.trial} ended in "
+                f"infrastructure failure: {detail}"
             )
+    if any(len(seeds) != 1 for seeds in seeds_by_trial.values()):
+        raise ExperimentError("tasks within a trial did not share one seed")
+    trial_seeds = [
+        next(iter(seeds_by_trial[trial])) for trial in range(trials_per_task)
+    ]
+    if len(set(trial_seeds)) != trials_per_task:
+        raise ExperimentError("trials did not receive distinct seeds")
 
 
 def run_experiment(experiment_path: Path) -> Path:
@@ -289,6 +339,7 @@ def run_experiment(experiment_path: Path) -> Path:
     repo_root = _repo_root()
     experiment = load_experiment(experiment_path)
     task_ids = tuple(experiment["task_ids"])
+    trials_per_task = int(experiment["trials_per_task"])
     check = preflight(experiment_path)
 
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
@@ -314,7 +365,7 @@ def run_experiment(experiment_path: Path) -> Path:
         user="user_simulator",
         llm_user="gpt-5.2",
         llm_args_user={"reasoning_effort": "low"},
-        num_trials=1,
+        num_trials=trials_per_task,
         max_steps=experiment["max_steps"],
         max_errors=experiment["max_errors"],
         max_concurrency=experiment["max_concurrency"],
@@ -337,8 +388,8 @@ def run_experiment(experiment_path: Path) -> Path:
         results_format="json",
     )
     reloaded = Results.load(results_path)
-    _validate_results(reloaded, task_ids)
-    audits = _collect_audits(audit_dir, task_ids)
+    _validate_results(reloaded, task_ids, trials_per_task)
+    audits, audit_paths = _collect_audits(audit_dir, reloaded)
     dynamic_calls = sum(int(audit.get("dynamic_call_count", 0)) for audit in audits)
     if dynamic_calls < 1:
         raise ExperimentError("no real Codex dynamic-tool round trip was captured")
@@ -359,6 +410,14 @@ def run_experiment(experiment_path: Path) -> Path:
         if simulation.reward_info is not None
     ]
     pass_at_1 = sum(rewards) / len(rewards)
+    trial_seeds = [
+        next(
+            simulation.seed
+            for simulation in reloaded.simulations
+            if simulation.trial == trial
+        )
+        for trial in range(trials_per_task)
+    ]
     ended_at = _utc_now()
     manifest = {
         "format_version": 1,
@@ -381,9 +440,7 @@ def run_experiment(experiment_path: Path) -> Path:
             "authentication_mode": "chatgpt",
             "plan_type": audits[0]["account"].get("plan_type"),
             "rate_limit_ids": check.get("rate_limit_ids", []),
-            "stream_reader_limit_bytes": check[
-                "app_server_stream_reader_limit_bytes"
-            ],
+            "stream_reader_limit_bytes": check["app_server_stream_reader_limit_bytes"],
             "child_platform_keys_present": False,
             "model_rerouted": False,
             "denied_native_event_observed": False,
@@ -417,27 +474,33 @@ def run_experiment(experiment_path: Path) -> Path:
             "seed": experiment["seed"],
             "task_partition": experiment["task_partition"],
             "task_ids": list(task_ids),
-            "trials_per_task": 1,
+            "trials_per_task": trials_per_task,
+            "trial_seeds": trial_seeds,
             "max_steps": experiment["max_steps"],
             "max_errors": experiment["max_errors"],
             "max_concurrency": experiment["max_concurrency"],
-            "simulation_count": len(task_ids),
+            "simulation_count": len(task_ids) * trials_per_task,
             "dynamic_tool_call_count": dynamic_calls,
             "start_time": started_at,
             "end_time": ended_at,
             "results_reloaded": True,
             "results_path": str(results_path.relative_to(repo_root)),
-            "audit_paths": [
-                str((audit_dir / f"{task_id}.json").relative_to(repo_root))
-                for task_id in task_ids
-            ],
+            "audit_paths": [str(path.relative_to(repo_root)) for path in audit_paths],
             "terminations": {
-                simulation.task_id: simulation.termination_reason.value
-                for simulation in reloaded.simulations
+                f"{simulation.task_id}/trial_{simulation.trial}": (
+                    simulation.termination_reason.value
+                )
+                for simulation in sorted(
+                    reloaded.simulations,
+                    key=lambda item: (item.task_id, item.trial),
+                )
             },
         },
         "score": {
-            "metric": "Pass@1 (mean single-trial reward)",
+            "metric": (
+                "Pass@1 (mean trajectory reward across "
+                f"{trials_per_task} trials per task)"
+            ),
             "pass_at_1": pass_at_1,
             "percent": pass_at_1 * 100,
             "passed": sum(reward == 1.0 for reward in rewards),
