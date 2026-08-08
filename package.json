@@ -10,8 +10,8 @@
     "node": ">=18"
   },
   "scripts": {
+    "check": "uv run pytest && uv run ruff check src tests",
     "codex:version": "codex --version",
     "codex:schema": "codex app-server generate-json-schema --experimental --out codex/schema"
   }
 }
-

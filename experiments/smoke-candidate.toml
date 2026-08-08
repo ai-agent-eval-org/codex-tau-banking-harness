@@ -18,6 +18,5 @@ workspace = "banking-knowledge-smoke"
 workspace_branch = "workspaces/8ed181fd-efd2-4a35-be63-77da3ab2001a/6340040dcd3fb89a"
 optimization_id = "7999cc12-1792-41c4-809f-d4f2e9e32c6e"
 candidate_branch = "agent-optimizations/8ed181fd-efd2-4a35-be63-77da3ab2001a/6340040dcd3fb89a/7999cc12-1792-41c4-809f-d4f2e9e32c6e"
-source_commit = "PENDING"
+source_commit = "7e8fc7b36c7c78ebd3b183e6d6e7a5547b68bb11"
 source_path = "AGENTS.md"
-
