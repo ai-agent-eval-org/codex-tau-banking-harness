@@ -29,11 +29,11 @@ native shell.
 
 Codex runs from an empty temporary directory and a temporary `CODEX_HOME` that
 contains only the benchmark configuration and a link to the user's existing
-`auth.json`. Strict configuration disables Codex shell/exec, filesystem,
-web/browser, MCP discovery, apps, plugins, hooks, goals, plans, user-input, and
-subagent capabilities. The adapter also aborts if any corresponding app-server
-event is observed. Repository `AGENTS.md` files are not discovered by the
-evaluated process.
+`auth.json`. Strict configuration disables Codex shell/exec, web/browser, MCP
+discovery, apps, plugins, hooks, goals, user-input, and subagent features
+exposed by this pinned version. The adapter independently aborts if any denied
+filesystem, plan, or other native-capability event is observed. Repository
+`AGENTS.md` files are not discovered by the evaluated process.
 
 ## Exact installation
 

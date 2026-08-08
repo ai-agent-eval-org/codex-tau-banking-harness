@@ -93,4 +93,4 @@ def test_manifest_round_trip_and_secret_rejection(tmp_path: Path) -> None:
     with pytest.raises(ManifestError, match="secret-looking"):
         write_manifest(path, {"api_key": "do-not-write-this"})
     with pytest.raises(ManifestError, match="secret-looking"):
-        write_manifest(path, {"value": "sk-abcdefghijklmnop"})
+        write_manifest(path, {"value": "sk-" + ("a" * 20)})

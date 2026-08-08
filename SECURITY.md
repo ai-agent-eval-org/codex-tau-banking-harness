@@ -15,12 +15,12 @@ prints, serializes, or commits its contents. The repository ignores `.env*`,
 
 ## Capability isolation
 
-The pinned strict Codex config disables native shell/exec, filesystem/image,
-web/browser, MCP, apps, plugins, hooks, goals, plans, user-input, workspace
-dependency, and subagent features. Codex runs from an empty directory. The
-adapter aborts on any app-server request or item that indicates a denied native
-capability. Only runtime dynamic tools derived from τ-bench `Tool` objects are
-accepted.
+The pinned strict Codex config disables its configurable native shell/exec,
+web/browser, MCP, apps, plugins, hooks, goals, user-input, workspace dependency,
+and subagent features. Codex runs from an empty directory. The adapter aborts
+on any filesystem, plan, or other app-server request/item that indicates a
+denied native capability. Only runtime dynamic tools derived from τ-bench
+`Tool` objects are accepted.
 
 ## Artifact redaction
 
@@ -34,4 +34,3 @@ rotate the credential at its provider, remove the artifact from disk and any
 Git history or remote storage, and only then resume with a clean output
 directory. Treat a committed credential as compromised even if the commit was
 later reverted.
-
