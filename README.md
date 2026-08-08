@@ -11,6 +11,14 @@ and `alltools` OpenAI embeddings. The child Codex process is launched with a
 sanitized environment and must report a ChatGPT account before a simulation can
 start.
 
+## Non-submission rule
+
+This is a local evaluation repository. **Never prepare, publish, upload, or
+submit its results or trajectories to a τ-bench leaderboard or any third party
+without fresh, explicit human authorization naming the target and scope.** A
+request to run or compare tasks is not submission authorization. The durable
+execution and publication rules are in [BENCHMARK_POLICY.md](BENCHMARK_POLICY.md).
+
 ## Architecture
 
 τ-bench remains authoritative for policy, state, tool schemas, and execution:
@@ -152,9 +160,6 @@ Local output is written below `runs/<arm>-<timestamp>/` and includes τ-bench's
 raw databases, embedding caches, and credentials are never copied or committed.
 
 These two-task results prove integration and prompt replacement only. They are
-not leaderboard-valid and must not be submitted. A later custom-system
-submission would require running the official complete task set under the
-declared prompt/orchestration, publishing the implementation and prompt
-modifications, preparing the required submission metadata/trajectories, and
-following τ-bench's leaderboard review process. This repository intentionally
-does none of those steps.
+not leaderboard-valid and must not be submitted. The standing non-submission
+rule in [BENCHMARK_POLICY.md](BENCHMARK_POLICY.md) applies even if a future run
+covers more tasks. This repository intentionally contains no submission path.
