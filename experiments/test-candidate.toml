@@ -1,0 +1,74 @@
+[experiment]
+name = "test-candidate"
+arm = "candidate"
+prompt_path = "prompts/banking_knowledge/candidate.md"
+domain = "banking_knowledge"
+retrieval = "alltools"
+agent_model = "gpt-5.4"
+agent_reasoning = "xhigh"
+user_model = "gpt-5.2"
+user_reasoning = "low"
+seed = 300
+trials_per_task = 1
+task_partition = "test"
+max_concurrency = 4
+task_ids = [
+  "task_002",
+  "task_008",
+  "task_010",
+  "task_012",
+  "task_014",
+  "task_016",
+  "task_019",
+  "task_022",
+  "task_027",
+  "task_031",
+  "task_035",
+  "task_037",
+  "task_038",
+  "task_039",
+  "task_041",
+  "task_043",
+  "task_045",
+  "task_046",
+  "task_047",
+  "task_048",
+  "task_050",
+  "task_051",
+  "task_053",
+  "task_055",
+  "task_056",
+  "task_057",
+  "task_058",
+  "task_061",
+  "task_062",
+  "task_065",
+  "task_066",
+  "task_068",
+  "task_069",
+  "task_071",
+  "task_073",
+  "task_074",
+  "task_076",
+  "task_078",
+  "task_080",
+  "task_082",
+  "task_084",
+  "task_085",
+  "task_086",
+  "task_089",
+  "task_091",
+  "task_096",
+  "task_098",
+  "task_101",
+  "task_102",
+]
+
+[experttrace]
+project_id = "8ed181fd-efd2-4a35-be63-77da3ab2001a"
+workspace = "banking-knowledge-smoke"
+workspace_branch = "workspaces/8ed181fd-efd2-4a35-be63-77da3ab2001a/6340040dcd3fb89a"
+optimization_id = "7999cc12-1792-41c4-809f-d4f2e9e32c6e"
+candidate_branch = "agent-optimizations/8ed181fd-efd2-4a35-be63-77da3ab2001a/6340040dcd3fb89a/7999cc12-1792-41c4-809f-d4f2e9e32c6e"
+source_commit = "7e8fc7b36c7c78ebd3b183e6d6e7a5547b68bb11"
+source_path = "AGENTS.md"

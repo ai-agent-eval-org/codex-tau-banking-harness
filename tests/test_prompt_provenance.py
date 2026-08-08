@@ -15,7 +15,9 @@ def test_baseline_and_candidate_are_distinct() -> None:
     baseline = (REPO_ROOT / "prompts/banking_knowledge/baseline.md").read_bytes()
     candidate = (REPO_ROOT / "prompts/banking_knowledge/candidate.md").read_bytes()
     assert prompt_hash(baseline) != prompt_hash(candidate)
-    assert (REPO_ROOT / "AGENTS.md").read_bytes() == candidate
+    rules = (REPO_ROOT / "AGENTS.md").read_text()
+    assert "Frozen banking train/test split" in rules
+    assert "current repository `AGENTS.md` is not an evaluated prompt" not in rules
 
 
 def test_common_instructions_bound_shell_output_and_have_stable_hash() -> None:

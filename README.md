@@ -113,6 +113,21 @@ authoritative schema parity, malformed/unknown tool rejection, single and
 multi-tool callback ordering, native-tool denial, prompt provenance, and τ-bench
 message/result serialization.
 
+## Frozen local train/test split
+
+Because τ-bench does not provide an official split for `banking_knowledge`,
+this repository freezes a seed-42 local split of the 97 public tasks: 48 train
+and 49 test. The exact IDs and the scientific-use rules are declared in
+[AGENTS.md](AGENTS.md) and hard-coded in
+[`src/codex_tau/task_split.py`](src/codex_tau/task_split.py). Runtime code never
+reshuffles them.
+
+The split is formed by shuffling the sorted IDs with Python `random.Random(42)`,
+assigning the first `ceil(97 * 0.5)` IDs to test, assigning the remainder to
+train, and sorting each stored partition. The prior smoke/optimization tasks,
+`task_001` and `task_004`, are both in train. Prompt iteration and human
+labeling must use train only; the test partition is aggregate evaluation only.
+
 ## Two-task smoke runs
 
 The fixed tasks were selected before scoring: `task_001` is a product
@@ -133,24 +148,44 @@ uv run codex-tau run experiments/smoke-candidate.toml
 ```
 
 `preflight` performs no model inference. `run` refuses any task list other than
-the two fixed smoke tasks and refuses trial counts other than one.
+the two fixed smoke tasks or the frozen 49-task test partition, and refuses
+trial counts other than one.
+
+## Frozen test run
+
+The candidate prompt can be evaluated once on the frozen test partition with
+the same `alltools`, model, reasoning, simulator, and authentication boundaries
+as the smoke harness:
+
+```bash
+uv run codex-tau preflight experiments/test-candidate.toml
+uv run codex-tau run experiments/test-candidate.toml
+```
+
+The experiment contains all 49 test IDs explicitly. Its manifest records the
+split algorithm, seed, counts, digest, exact task IDs, tool-schema digest, and
+Pass@1. Test trajectories must not be used for subsequent prompt optimization.
 
 ## ExpertTrace prompt provenance
 
-The current ExpertTrace workflow optimizes a root `AGENTS.md`, not an arbitrary
-prompt path. This repository uses the explicit mapping allowed by that
-constraint:
+The ExpertTrace workflow used for the existing candidate optimized a root
+`AGENTS.md`, not an arbitrary prompt path. This repository preserves the
+historical prompt provenance while using the current root `AGENTS.md` for
+repository evaluation rules:
 
-- the ExpertTrace workspace branch stores the baseline bytes in `AGENTS.md`;
-- the optimization branch stores the candidate bytes in `AGENTS.md`;
+- the pinned ExpertTrace workspace commit stores the baseline bytes in
+  `AGENTS.md`;
+- the pinned optimization commit stores the candidate bytes in `AGENTS.md`;
 - `prompts/banking_knowledge/*.md` contains those exact bytes for the harness;
 - each experiment pins the source branch, commit, path, project, workspace, and
   optimization identifiers;
 - the runner verifies `git show <source-commit>:AGENTS.md` byte-for-byte before
   starting Codex.
 
-The evaluated app-server still runs outside the repository, so this mapping
-does not expose ExpertTrace or `AGENTS.md` discovery to the model.
+The current repository `AGENTS.md` is not an evaluated prompt. The app-server
+runs outside the repository and the harness loads the prompt file only after
+verifying it against its historical source commit, so repository instructions
+are not exposed to the evaluated model.
 
 ## Artifacts and leaderboard scope
 
@@ -159,7 +194,9 @@ Local output is written below `runs/<arm>-<timestamp>/` and includes τ-bench's
 `runs/` except `.gitkeep` is ignored. The 410 MiB reference result, auth state,
 raw databases, embedding caches, and credentials are never copied or committed.
 
-These two-task results prove integration and prompt replacement only. They are
-not leaderboard-valid and must not be submitted. The standing non-submission
-rule in [BENCHMARK_POLICY.md](BENCHMARK_POLICY.md) applies even if a future run
-covers more tasks. This repository intentionally contains no submission path.
+Smoke results prove integration and prompt replacement only. The frozen
+test-partition result is a local, single-trial held-out estimate, not an official
+full-domain leaderboard score. Neither is leaderboard-valid, and neither may be
+submitted. The standing non-submission rule in
+[BENCHMARK_POLICY.md](BENCHMARK_POLICY.md) applies to every run. This repository
+intentionally contains no submission path.
