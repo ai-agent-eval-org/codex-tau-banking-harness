@@ -102,6 +102,7 @@ def load_experiment(path: Path) -> dict[str, Any]:
         "tau_reference_trial0": "terminal_use",
         "alltools_concurrency_validation_4trials": "alltools",
         "alltools_pilot_4trials": "alltools",
+        "alltools_pilot_concurrency16_4trials": "alltools",
     }
     profile = experiment.get("profile")
     expected_retrieval = profiles.get(profile)
@@ -114,28 +115,30 @@ def load_experiment(path: Path) -> dict[str, Any]:
     partition = experiment.get("task_partition")
     if partition == "smoke":
         authorized_task_ids = SMOKE_TASK_IDS
-        expected_profile = "tau_reference_trial0"
+        expected_profiles = {"tau_reference_trial0": 1}
         expected_trials = 1
-        expected_concurrency = 1
     elif partition == "pilot2":
         authorized_task_ids = PILOT2_TASK_IDS
-        expected_profile = "alltools_concurrency_validation_4trials"
+        expected_profiles = {"alltools_concurrency_validation_4trials": 2}
         expected_trials = 4
-        expected_concurrency = 2
     elif partition == "pilot5":
         authorized_task_ids = PILOT5_TASK_IDS
-        expected_profile = "alltools_pilot_4trials"
+        expected_profiles = {
+            "alltools_pilot_4trials": 8,
+            "alltools_pilot_concurrency16_4trials": 16,
+        }
         expected_trials = 4
-        expected_concurrency = 8
     elif partition == "test":
         authorized_task_ids = TEST_TASK_IDS
-        expected_profile = "tau_reference_trial0"
+        expected_profiles = {"tau_reference_trial0": 1}
         expected_trials = 1
-        expected_concurrency = 1
     else:
         raise ExperimentError("task_partition must be smoke, pilot2, pilot5, or test")
-    if profile != expected_profile:
-        raise ExperimentError(f"profile must be {expected_profile!r} for {partition!r}")
+    if profile not in expected_profiles:
+        raise ExperimentError(
+            f"profile must be one of {sorted(expected_profiles)!r} for {partition!r}"
+        )
+    expected_concurrency = expected_profiles[profile]
     if experiment.get("trials_per_task") != expected_trials:
         raise ExperimentError(
             f"trials_per_task must be {expected_trials} for {partition!r}"

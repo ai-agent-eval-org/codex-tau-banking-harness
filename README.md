@@ -187,6 +187,20 @@ infrastructure error. This pilot is not comparable to the external
 `terminal_use` result. See [PILOT_STATUS.md](PILOT_STATUS.md) for the latest
 execution evidence.
 
+## Concurrency-16 scaling trial
+
+The scaling trial reuses the exact five-task, four-trial pilot matrix and
+changes only the maximum worker count from eight to 16. It is a transport and
+throughput validation, not a new benchmark partition:
+
+```bash
+uv run codex-tau preflight experiments/pilot5-alltools-concurrency16.toml
+uv run codex-tau run experiments/pilot5-alltools-concurrency16.toml
+```
+
+The runtime allowlist accepts only this exact concurrency-16 combination; it
+does not authorize arbitrary task expansion or leaderboard submission.
+
 ## Frozen test run
 
 The standard τ-bench prompt can be evaluated once on the frozen test partition

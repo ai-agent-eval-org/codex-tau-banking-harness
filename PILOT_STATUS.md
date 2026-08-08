@@ -1,26 +1,31 @@
-# Five-task alltools pilot status
+# Five-task alltools concurrency status
 
 The transport blocker and the four-trial concurrency ramp were verified locally
-on 2026-08-08. The five-task/four-trial pilot scored **65.0% Pass@1**: 13 of
-20 trajectories passed.
+on 2026-08-08. Both five-task/four-trial runs scored **65.0% Pass@1**: 13 of
+20 trajectories passed at concurrency eight and at concurrency 16.
 
 The bounded ramp is:
 
 1. `task_002` and `task_008`, four trials each, concurrency two;
 2. if every trajectory passes infrastructure validation, the five explicit
-   pilot tasks, four trials each, concurrency eight.
+   pilot tasks, four trials each, concurrency eight; and
+3. if concurrency eight remains clean, rerun that exact 20-trajectory matrix
+   at concurrency 16.
 
 The concurrency-two validation completed all eight trajectories in 8m59s and
 scored 75.0% (6/8). The concurrency-eight pilot completed all 20 trajectories
-in 5m15s and scored 65.0% (13/20). All 28 trajectories ended with `user_stop`;
-none ended in an infrastructure or unexpected error.
+in 5m15s and scored 65.0% (13/20). The concurrency-16 scaling trial completed
+the same matrix in 3m16s and scored 65.0% (13/20). Relative to concurrency
+eight, concurrency 16 reduced wall time by 38.0% and increased trajectory
+throughput by 61.2%. All 48 trajectories ended with `user_stop`; none ended in
+an infrastructure or unexpected error.
 
 Each trajectory has a distinct task-and-seed audit path, and `results.json` is
-checkpointed after every completed simulation. Model-free checks pass (41
+checkpointed after every completed simulation. Model-free checks pass (42
 tests). Every run audit verified personal ChatGPT authentication, GPT-5.4/high,
 empty instruction-source discovery, no model reroute, no denied Codex-native
 capability, and clean shutdown. The five-task pilot completed 324 authoritative
-τ-bench dynamic-tool calls.
+τ-bench dynamic-tool calls at concurrency eight and 321 at concurrency 16.
 
 ## Root cause and fix
 
@@ -46,7 +51,7 @@ buffer size, not an eager per-process allocation.
 
 ## Verification evidence
 
-- 41 model-free tests passed, including the large-line transport regression and
+- 42 model-free tests passed, including the large-line transport regression and
   multi-trial audit/result matrix coverage.
 - Synthetic 123,322-byte repeated and exact captured payloads both completed
   after raising the reader limit.
@@ -58,8 +63,8 @@ buffer size, not an eager per-process allocation.
 
 The earlier infrastructure-error records remain under ignored local `runs/`
 directories. They are not zero rewards and are not included in either score.
-The verified concurrency-two and concurrency-eight manifests are also local,
-ignored artifacts and are not committed.
+The verified concurrency-two, concurrency-eight, and concurrency-16 manifests
+are also local, ignored artifacts and are not committed.
 
 The adapter-level diagnosis exposed `task_002` and `task_008` identities and
 retrieval sequences; `task_002` was rerun after the transport fix. Any future

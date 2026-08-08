@@ -70,6 +70,19 @@ def test_alltools_pilot5_is_the_predeclared_holdout_prefix() -> None:
     assert experiment["max_concurrency"] == 8
 
 
+def test_alltools_pilot5_concurrency16_is_exactly_bounded() -> None:
+    experiment = load_experiment(
+        REPO_ROOT / "experiments/pilot5-alltools-concurrency16.toml"
+    )
+    assert PILOT5_TASK_IDS == TEST_TASK_IDS[:5]
+    assert tuple(experiment["task_ids"]) == PILOT5_TASK_IDS
+    assert experiment["profile"] == "alltools_pilot_concurrency16_4trials"
+    assert experiment["retrieval"] == "alltools"
+    assert experiment["trials_per_task"] == 4
+    assert experiment["max_steps"] == 200
+    assert experiment["max_concurrency"] == 16
+
+
 def test_alltools_concurrency_validation_is_exactly_bounded() -> None:
     experiment = load_experiment(
         REPO_ROOT / "experiments/pilot2-alltools-concurrency2.toml"
