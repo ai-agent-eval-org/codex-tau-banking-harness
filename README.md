@@ -3,7 +3,7 @@
 This repository is a minimal, fail-closed adapter between the official
 `banking_knowledge` domain in τ-bench and the Codex app-server. It is pinned to
 τ-bench `v1.0.1` (`fc0055dc4e0a316c3f83133267fbd6faaa770992`) and Codex CLI
-`0.144.6`.
+`0.147.0`.
 
 The evaluated agent uses a personal ChatGPT/Codex login. The parent τ-bench
 process may use `OPENAI_API_KEY` only for the official GPT-5.2 user simulator
@@ -58,7 +58,7 @@ For an existing checkout, run `git submodule update --init --recursive` first.
 The submodule is detached at the declared τ-bench commit because its built wheel
 does not include the official benchmark data tree. The lockfiles contain the
 complete dependency resolution. The harness refuses to launch a Codex
-executable whose reported version is not `0.144.6`.
+executable whose reported version is not `0.147.0`.
 
 ## Authentication and cost boundary
 

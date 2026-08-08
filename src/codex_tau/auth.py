@@ -10,7 +10,7 @@ import subprocess
 from pathlib import Path
 from typing import Any, Mapping
 
-CODEX_VERSION = "0.144.6"
+CODEX_VERSION = "0.147.0"
 _EXPLICIT_SECRET_VARS = {
     "OPENAI_API_KEY",
     "OPENAI_API_TOKEN",
@@ -132,4 +132,3 @@ def require_model_catalog(result: Mapping[str, Any]) -> dict[str, Any]:
             "reasoning_efforts": sorted(str(value) for value in values if value),
         }
     raise AuthError("GPT-5.4 is unavailable in the personal ChatGPT model catalog")
-
