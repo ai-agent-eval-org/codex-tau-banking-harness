@@ -204,6 +204,7 @@ class CodexAppServer:
             "dynamic_call_names": [],
             "native_capability_denied": False,
             "model_rerouted": False,
+            "remote_control_statuses": [],
         }
 
         if transport is not None:
@@ -351,6 +352,15 @@ class CodexAppServer:
             if method == "model/rerouted":
                 self.audit["model_rerouted"] = True
                 raise ProtocolError("Codex model rerouting is forbidden")
+            if method == "remoteControl/status/changed":
+                status = params.get("status")
+                self.audit["remote_control_statuses"].append(status)
+                if status != "disabled":
+                    self.audit["native_capability_denied"] = True
+                    raise ProtocolError(
+                        f"Codex remote control was not disabled: {status!r}"
+                    )
+                continue
             if method in {"item/started", "item/completed"}:
                 item = params.get("item")
                 if not isinstance(item, Mapping):
@@ -381,11 +391,18 @@ class CodexAppServer:
             # Benign lifecycle/delta notifications carry no new capability.
             if method in {
                 "thread/started",
+                "thread/status/changed",
+                "thread/tokenUsage/updated",
                 "turn/started",
                 "item/agentMessage/delta",
                 "item/reasoning/summaryTextDelta",
                 "item/reasoning/summaryPartAdded",
+                "item/reasoning/textDelta",
                 "account/rateLimits/updated",
+                "model/verification",
+                "turn/moderationMetadata",
+                "model/safetyBuffering/updated",
+                "serverRequest/resolved",
             }:
                 continue
             raise ProtocolError(f"unexpected app-server notification: {method!r}")
