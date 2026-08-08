@@ -1,41 +1,48 @@
 # Five-task alltools pilot status
 
-No valid score was produced on 2026-08-08.
+The transport blocker was fixed and verified locally on 2026-08-08. The full
+five-task pilot has not been rerun, so there is still no five-task Pass@1 to
+report.
 
-The pilot was predeclared as one trial each over `task_002`, `task_008`,
-`task_010`, `task_012`, and `task_014`, using GPT-5.4/high through personal
-ChatGPT authentication, GPT-5.2/low for the user simulator, seed 300,
-`max_steps = 200`, and τ-bench's unmodified `alltools` retrieval profile.
+## Root cause and fix
 
-Two independent real tasks, `task_002` and `task_008`, followed the same
-sequence:
+Codex app-server lifecycle events echo complete dynamic-tool results. Python's
+`asyncio.create_subprocess_exec` defaults each subprocess stream reader to a
+64 KiB line limit. A real `task_002` shell result was 123,322 bytes, so the
+app-server's corresponding `item/completed` JSON line exceeded that default.
+The harness's stdout reader task failed silently while app-server remained
+alive, which looked like a post-tool continuation stall.
 
-1. `KB_search_bm25` completed and its result was returned to app-server.
-2. `KB_search_dense` completed and its result was returned to app-server.
-3. `shell` completed and its result was returned to app-server.
-4. Codex app-server emitted no subsequent event and hit the 120-second
-   no-event watchdog at `item/tool/call:responded`.
+The harness now:
 
-The remaining three tasks were cancelled because the completed records were
-infrastructure errors and could not form a Pass@1 estimate. Partial files stay
-under the ignored local `runs/` directory and must not be published.
+- sets an explicit 64 MiB per-line reader ceiling for app-server stdout and
+  stderr;
+- reports background reader failures and unexpected stdout closure
+  immediately;
+- records the reader ceiling in preflight, per-task audits, and manifests; and
+- has model-free regression coverage for a 128 KiB JSON-RPC line.
 
-Isolation checks established:
+The ceiling is more than 500 times the observed failing result and more than
+eight times the current banking-domain data tree. It is a bounded maximum
+buffer size, not an eager per-process allocation.
 
-- a fresh app-server completes one dynamic shell call and continuation;
-- a fresh app-server completes BM25, dense, and shell sequentially when their
-  returned payloads are tiny synthetic strings;
-- τ-bench retrieval, cached embeddings, sandbox execution, ChatGPT auth, and
-  GPT-5.4 model selection all initialized successfully;
-- the failure therefore occurs when app-server continues after the real
-  τ-bench shell result, not while the retrieval tool executes;
-- every trajectory already creates a fresh local app-server and thread, so
-  restarting the harness process does not clear the failure.
+## Verification evidence
 
-This is an infrastructure failure, not a zero reward. Do not report or compare
-it as a benchmark score, and do not submit it to any leaderboard.
+- 37 model-free tests passed, including the large-line transport regression.
+- Synthetic 123,322-byte repeated and exact captured payloads both completed
+  after raising the reader limit.
+- One post-fix `task_002` trial completed normally in 89.15 seconds with 28
+  messages, 10 dynamic-tool results, `user_stop`, and reward `1.0`.
+- ChatGPT authentication, GPT-5.4/high, GPT-5.2/low, the canonical prompt,
+  unmodified `alltools`, tool-only capability isolation, and seed 300 were
+  preserved.
 
-The adapter-level failure diagnosis exposed task identities and retrieval
-sequences for `task_002` and `task_008`; `task_002`'s public scenario was also
-inspected locally. Any future held-out claim including those tasks must disclose
-that contamination. No prompt was optimized from this evidence.
+The earlier infrastructure-error records remain under ignored local `runs/`
+directories. They are not zero rewards and must not be included in benchmark
+scores. The post-fix verification is one task, not a five-task estimate.
+
+The adapter-level diagnosis exposed `task_002` and `task_008` identities and
+retrieval sequences; `task_002` was rerun after the transport fix. Any future
+held-out claim including these tasks must disclose that contamination. No
+prompt was optimized from this evidence, and no result may be submitted under
+the repository's standing non-submission rule.

@@ -54,6 +54,13 @@ The adapter independently aborts if any denied filesystem, plan, or other
 native-capability event is observed. Repository `AGENTS.md` files are not
 discovered by the evaluated process.
 
+App-server stdout and stderr use an explicit 64 MiB per-line reader limit. This
+is more than 500 times the 123,322-byte result that exposed Python's 64 KiB
+default and more than eight times the current banking domain data tree. The
+limit is a bounded ceiling rather than an eager allocation. Reader failures and
+unexpected stdout closure terminate the trajectory immediately instead of
+degrading into an idle timeout.
+
 ## Exact installation
 
 Prerequisites: Python 3.12 or 3.13, `uv`, Node.js 18+, npm, `rg`, and

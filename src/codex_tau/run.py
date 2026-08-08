@@ -29,7 +29,7 @@ from tau2.runner.batch import run_tasks
 from tau2.runner.helpers import get_tasks
 
 from .agent import create_codex_tau_agent
-from .app_server import CodexAppServer
+from .app_server import APP_SERVER_STREAM_READER_LIMIT_BYTES, CodexAppServer
 from .auth import CODEX_VERSION
 from .manifest import write_manifest
 from .prompt import (
@@ -222,6 +222,9 @@ def preflight(
         "tool_names": list(catalog.names),
         "tool_schema_sha256": catalog.hash,
         "codex_version": CODEX_VERSION,
+        "app_server_stream_reader_limit_bytes": (
+            APP_SERVER_STREAM_READER_LIMIT_BYTES
+        ),
         "account": runtime_audit["account"],
         "model": runtime_audit["model"],
         "rate_limit_ids": runtime_audit.get("rate_limit_ids", []),
@@ -378,6 +381,9 @@ def run_experiment(experiment_path: Path) -> Path:
             "authentication_mode": "chatgpt",
             "plan_type": audits[0]["account"].get("plan_type"),
             "rate_limit_ids": check.get("rate_limit_ids", []),
+            "stream_reader_limit_bytes": check[
+                "app_server_stream_reader_limit_bytes"
+            ],
             "child_platform_keys_present": False,
             "model_rerouted": False,
             "denied_native_event_observed": False,

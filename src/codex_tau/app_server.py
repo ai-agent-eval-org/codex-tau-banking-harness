@@ -34,6 +34,11 @@ class ProtocolError(RuntimeError):
 
 
 _ALLOWED_ITEM_TYPES = {"userMessage", "agentMessage", "reasoning", "dynamicToolCall"}
+# App-server lifecycle events echo complete dynamic-tool results. The banking
+# corpus is currently under 8 MiB, so 64 MiB is deliberately generous while
+# still bounding memory if a shell command produces pathological output. This
+# is a StreamReader line limit, not an eager allocation.
+APP_SERVER_STREAM_READER_LIMIT_BYTES = 64 * 1024 * 1024
 TURN_OUTPUT_TIMEOUT_SECONDS = 600
 TURN_OUTPUT_IDLE_TIMEOUT_SECONDS = 120
 
@@ -55,6 +60,7 @@ class JsonRpcProcess:
         self._thread = threading.Thread(target=self._run_loop, daemon=True)
         self._thread.start()
         self._process: asyncio.subprocess.Process | None = None
+        self._closing = False
         self._pending: dict[str | int, asyncio.Future[Mapping[str, Any]]] = {}
         self._next_id = 1
         self._reader_task: asyncio.Task[None] | None = None
@@ -80,35 +86,69 @@ class JsonRpcProcess:
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
+            limit=APP_SERVER_STREAM_READER_LIMIT_BYTES,
         )
         self._reader_task = asyncio.create_task(self._read_stdout())
         self._stderr_task = asyncio.create_task(self._drain_stderr())
 
     async def _drain_stderr(self) -> None:
         assert self._process is not None and self._process.stderr is not None
-        while await self._process.stderr.readline():
-            # stderr can contain sensitive provider diagnostics, so retain only
-            # a count for timeout diagnostics rather than the lines themselves.
-            self.stderr_line_count += 1
+        try:
+            while await self._process.stderr.readline():
+                # stderr can contain sensitive provider diagnostics, so retain only
+                # a count for timeout diagnostics rather than the lines themselves.
+                self.stderr_line_count += 1
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            if not self._closing:
+                self.inbox.put(
+                    {
+                        "transportError": "Codex app-server stderr reader failed "
+                        f"with {type(exc).__name__}"
+                    }
+                )
 
     async def _read_stdout(self) -> None:
         assert self._process is not None and self._process.stdout is not None
-        while line := await self._process.stdout.readline():
-            try:
-                message = json.loads(line)
-            except json.JSONDecodeError:
-                self.inbox.put({"transportError": "non-JSON app-server output"})
-                continue
-            if "id" in message and "method" not in message:
-                pending = self._pending.pop(message["id"], None)
-                if pending is not None and not pending.done():
-                    pending.set_result(message)
-            else:
-                self.inbox.put(message)
-        for pending in self._pending.values():
-            if not pending.done():
-                pending.set_exception(
-                    ProtocolError("Codex app-server exited while awaiting response")
+        reached_eof = False
+        try:
+            while line := await self._process.stdout.readline():
+                try:
+                    message = json.loads(line)
+                except (json.JSONDecodeError, UnicodeDecodeError):
+                    self.inbox.put({"transportError": "non-JSON app-server output"})
+                    continue
+                if "id" in message and "method" not in message:
+                    pending = self._pending.pop(message["id"], None)
+                    if pending is not None and not pending.done():
+                        pending.set_result(message)
+                else:
+                    self.inbox.put(message)
+            reached_eof = True
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            if not self._closing:
+                self.inbox.put(
+                    {
+                        "transportError": "Codex app-server stdout reader failed "
+                        f"with {type(exc).__name__}"
+                    }
+                )
+        finally:
+            for pending in self._pending.values():
+                if not pending.done():
+                    pending.set_exception(
+                        ProtocolError("Codex app-server exited while awaiting response")
+                    )
+            if reached_eof and not self._closing:
+                returncode = self._process.returncode
+                self.inbox.put(
+                    {
+                        "transportError": "Codex app-server stdout closed unexpectedly; "
+                        f"return code was {returncode!r}"
+                    }
                 )
 
     async def _send(self, message: Mapping[str, Any]) -> None:
@@ -160,6 +200,7 @@ class JsonRpcProcess:
         future.result(30)
 
     async def _close(self) -> None:
+        self._closing = True
         if self._process is not None and self._process.returncode is None:
             self._process.terminate()
             try:
@@ -218,6 +259,9 @@ class CodexAppServer:
             "model_rerouted": False,
             "protocol_event_count": 0,
             "remote_control_statuses": [],
+            "transport_stream_reader_limit_bytes": (
+                APP_SERVER_STREAM_READER_LIMIT_BYTES
+            ),
             "tool_results_returned": 0,
             "turns_completed": 0,
             "turns_started": 0,
