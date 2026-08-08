@@ -32,6 +32,7 @@ class ProtocolError(RuntimeError):
 
 
 _ALLOWED_ITEM_TYPES = {"userMessage", "agentMessage", "reasoning", "dynamicToolCall"}
+TURN_OUTPUT_TIMEOUT_SECONDS = 1800
 
 
 def reject_native_item(item: Mapping[str, Any]) -> None:
@@ -323,7 +324,9 @@ class CodexAppServer:
             self.transport.respond(request_id, result)
         return self._wait_for_output()
 
-    def _wait_for_output(self, timeout: float = 600) -> tuple[str | list[ToolCall], bool]:
+    def _wait_for_output(
+        self, timeout: float = TURN_OUTPUT_TIMEOUT_SECONDS
+    ) -> tuple[str | list[ToolCall], bool]:
         deadline = time.monotonic() + timeout
         calls: list[ToolCall] = []
         while True:
