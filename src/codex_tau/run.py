@@ -26,7 +26,7 @@ from tau2.runner.batch import run_tasks
 from tau2.runner.helpers import get_tasks
 
 from .agent import create_codex_tau_agent
-from .app_server import CodexAppServer
+from .app_server import BASE_INSTRUCTIONS_SHA256, CodexAppServer
 from .auth import CODEX_VERSION
 from .manifest import write_manifest
 from .prompt import VerifiedPrompt, verify_prompt
@@ -151,6 +151,7 @@ def preflight(
         "experiment": experiment["name"],
         "task_ids": AUTHORIZED_TASKS,
         "prompt_sha256": prompt.sha256,
+        "base_instructions_sha256": BASE_INSTRUCTIONS_SHA256,
         "policy_sha256": _sha256_text(policy),
         "tool_names": list(catalog.names),
         "tool_schema_sha256": catalog.hash,
@@ -299,6 +300,7 @@ def run_experiment(experiment_path: Path) -> Path:
         "prompt": {
             "path": verified_prompt.path,
             "sha256": verified_prompt.sha256,
+            "common_base_instructions_sha256": BASE_INSTRUCTIONS_SHA256,
             "source_path": verified_prompt.source_path,
             "source_commit": verified_prompt.source_commit,
             "workspace_branch": provenance["workspace_branch"],

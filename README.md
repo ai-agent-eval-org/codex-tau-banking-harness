@@ -27,6 +27,13 @@ returned to the official τ-bench orchestrator for execution. The tool named
 `shell` is therefore τ-bench's read-only `sandbox-runtime` tool, never Codex's
 native shell.
 
+The common app-server instructions prefer BM25/dense retrieval and require any
+use of τ-bench's dynamic `shell` to target known evidence and bound its output.
+This leaves the authoritative tool schema, execution, and result untouched while
+avoiding broad listings that can exceed Codex app-server's reliable dynamic-tool
+continuation size. The exact common-instruction hash is recorded by preflight and
+in every run manifest, separately from the baseline/candidate prompt hash.
+
 Codex runs from an empty temporary directory and a temporary `CODEX_HOME` that
 contains only the benchmark configuration and a link to the user's existing
 `auth.json`. Strict configuration disables Codex shell/exec, web/browser, MCP

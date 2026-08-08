@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from codex_tau.app_server import BASE_INSTRUCTIONS, BASE_INSTRUCTIONS_SHA256
 from codex_tau.prompt import PromptError, prompt_hash, verify_prompt
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -15,6 +16,12 @@ def test_baseline_and_candidate_are_distinct() -> None:
     candidate = (REPO_ROOT / "prompts/banking_knowledge/candidate.md").read_bytes()
     assert prompt_hash(baseline) != prompt_hash(candidate)
     assert (REPO_ROOT / "AGENTS.md").read_bytes() == candidate
+
+
+def test_common_instructions_bound_shell_output_and_have_stable_hash() -> None:
+    assert "prefer KB_search_bm25 or KB_search_dense" in BASE_INSTRUCTIONS
+    assert "Never request broad directory enumeration" in BASE_INSTRUCTIONS
+    assert prompt_hash(BASE_INSTRUCTIONS.encode()) == BASE_INSTRUCTIONS_SHA256
 
 
 def test_exact_git_bytes_are_required(tmp_path: Path) -> None:
@@ -51,4 +58,3 @@ def test_exact_git_bytes_are_required(tmp_path: Path) -> None:
             {"prompt_path": "prompts/candidate.md"},
             {"source_commit": commit, "source_path": "AGENTS.md"},
         )
-

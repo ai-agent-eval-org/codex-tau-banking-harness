@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import os
 import queue
@@ -34,6 +35,17 @@ class ProtocolError(RuntimeError):
 
 _ALLOWED_ITEM_TYPES = {"userMessage", "agentMessage", "reasoning", "dynamicToolCall"}
 TURN_OUTPUT_TIMEOUT_SECONDS = 600
+BASE_INSTRUCTIONS = (
+    "You are the evaluated Rho-Bank support agent. Follow the supplied policy "
+    "and experiment prompt. Use only the supplied dynamic tools. Do not use "
+    "native Codex capabilities. For knowledge-base retrieval, prefer "
+    "KB_search_bm25 or KB_search_dense. Use the dynamic shell only for targeted "
+    "inspection of known files or patterns. Never request broad directory "
+    "enumeration or an unbounded file read; every shell command must target "
+    "specific evidence and bound its output with head, tail, sed ranges, or "
+    "grep limits."
+)
+BASE_INSTRUCTIONS_SHA256 = hashlib.sha256(BASE_INSTRUCTIONS.encode()).hexdigest()
 
 
 def reject_native_item(item: Mapping[str, Any]) -> None:
@@ -207,6 +219,7 @@ class CodexAppServer:
         self._final_text: str | None = None
         self._audit_sink = audit_sink
         self.audit: dict[str, Any] = {
+            "base_instructions_sha256": BASE_INSTRUCTIONS_SHA256,
             "dynamic_call_count": 0,
             "dynamic_call_names": [],
             "last_protocol_method": None,
@@ -276,11 +289,7 @@ class CodexAppServer:
                 "sandbox": "read-only",
                 "allowProviderModelFallback": False,
                 "ephemeral": True,
-                "baseInstructions": (
-                    "You are the evaluated Rho-Bank support agent. Follow the supplied "
-                    "policy and experiment prompt. Use only the supplied dynamic tools. "
-                    "Do not use native Codex capabilities."
-                ),
+                "baseInstructions": BASE_INSTRUCTIONS,
                 "developerInstructions": (
                     "<domain_policy>\n"
                     + domain_policy
