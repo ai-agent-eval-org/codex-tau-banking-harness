@@ -65,7 +65,7 @@ def test_tau_messages_and_fake_trajectory_round_trip(tmp_path: Path) -> None:
             domain_name="banking_knowledge", policy="policy"
         ),
         seed=300,
-        retrieval_config="alltools",
+        retrieval_config="terminal_use",
     )
     results = Results(info=info, tasks=[task], simulations=[run])
     path = tmp_path / "results.json"

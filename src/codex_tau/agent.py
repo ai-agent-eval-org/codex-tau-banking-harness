@@ -23,6 +23,7 @@ from tau2.data_model.tasks import Task
 from tau2.environment.tool import Tool
 
 from .app_server import CodexAppServer
+from .prompt import standard_system_prompt
 
 
 class CodexAgentState(BaseModel):
@@ -40,7 +41,6 @@ class CodexTauAgent(HalfDuplexAgent[CodexAgentState]):
         tools: list[Tool],
         domain_policy: str,
         repo_root: Path,
-        prompt: str,
         audit_path: Path,
         runtime_factory: type[CodexAppServer] = CodexAppServer,
     ):
@@ -49,8 +49,7 @@ class CodexTauAgent(HalfDuplexAgent[CodexAgentState]):
         self.runtime = runtime_factory(
             repo_root=repo_root,
             tools=tools,
-            domain_policy=domain_policy,
-            prompt=prompt,
+            system_prompt=standard_system_prompt(domain_policy),
             audit_sink=self._write_audit,
         )
 
@@ -138,13 +137,9 @@ def create_codex_tau_agent(
         raise ValueError("Codex agent factory requires task and llm_args")
     repo_root = Path(str(llm_args["repo_root"])).resolve()
     audit_dir = Path(str(llm_args["audit_dir"])).resolve()
-    prompt = llm_args.get("prompt")
-    if not isinstance(prompt, str) or not prompt:
-        raise ValueError("Codex agent factory requires a non-empty prompt")
     return CodexTauAgent(
         tools=tools,
         domain_policy=domain_policy,
         repo_root=repo_root,
-        prompt=prompt,
         audit_path=audit_dir / f"{task.id}.json",
     )

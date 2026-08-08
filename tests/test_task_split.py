@@ -44,10 +44,12 @@ def test_split_digest_is_stable() -> None:
 
 
 def test_test_experiment_is_exactly_bounded_to_frozen_test_ids() -> None:
-    experiment, _ = load_experiment(REPO_ROOT / "experiments/test-candidate.toml")
+    experiment = load_experiment(REPO_ROOT / "experiments/test-reference.toml")
     assert experiment["task_partition"] == "test"
     assert tuple(experiment["task_ids"]) == TEST_TASK_IDS
-    assert experiment["retrieval"] == "alltools"
+    assert experiment["retrieval"] == "terminal_use"
+    assert experiment["agent_reasoning"] == "high"
+    assert experiment["max_steps"] == 200
     assert experiment["trials_per_task"] == 1
     assert experiment["max_concurrency"] == 4
 

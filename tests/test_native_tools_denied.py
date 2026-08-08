@@ -68,8 +68,7 @@ def test_disabled_remote_control_status_is_lifecycle_only() -> None:
     runtime = CodexAppServer(
         repo_root=Path("."),
         tools=[],
-        domain_policy="policy",
-        prompt="prompt",
+        system_prompt="prompt",
         transport=transport,  # type: ignore[arg-type]
     )
     assert runtime._wait_for_output() == ("done", True)
@@ -88,8 +87,7 @@ def test_enabled_remote_control_status_fails_closed() -> None:
     runtime = CodexAppServer(
         repo_root=Path("."),
         tools=[],
-        domain_policy="policy",
-        prompt="prompt",
+        system_prompt="prompt",
         transport=transport,  # type: ignore[arg-type]
     )
     with pytest.raises(ProtocolError, match="remote control"):
@@ -102,8 +100,7 @@ def test_stalled_turn_reports_last_protocol_boundary() -> None:
     runtime = CodexAppServer(
         repo_root=Path("."),
         tools=[],
-        domain_policy="policy",
-        prompt="prompt",
+        system_prompt="prompt",
         transport=transport,  # type: ignore[arg-type]
         audit_sink=snapshots.append,
     )

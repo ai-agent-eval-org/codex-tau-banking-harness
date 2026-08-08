@@ -1,15 +1,16 @@
 [experiment]
-name = "test-candidate"
-arm = "candidate"
-prompt_path = "prompts/banking_knowledge/candidate.md"
+name = "test-reference"
+profile = "tau_reference_trial0"
 domain = "banking_knowledge"
-retrieval = "alltools"
+retrieval = "terminal_use"
 agent_model = "gpt-5.4"
-agent_reasoning = "xhigh"
+agent_reasoning = "high"
 user_model = "gpt-5.2"
 user_reasoning = "low"
 seed = 300
 trials_per_task = 1
+max_steps = 200
+max_errors = 10
 task_partition = "test"
 max_concurrency = 4
 task_ids = [
@@ -63,12 +64,3 @@ task_ids = [
   "task_101",
   "task_102",
 ]
-
-[experttrace]
-project_id = "8ed181fd-efd2-4a35-be63-77da3ab2001a"
-workspace = "banking-knowledge-smoke"
-workspace_branch = "workspaces/8ed181fd-efd2-4a35-be63-77da3ab2001a/6340040dcd3fb89a"
-optimization_id = "7999cc12-1792-41c4-809f-d4f2e9e32c6e"
-candidate_branch = "agent-optimizations/8ed181fd-efd2-4a35-be63-77da3ab2001a/6340040dcd3fb89a/7999cc12-1792-41c4-809f-d4f2e9e32c6e"
-source_commit = "7e8fc7b36c7c78ebd3b183e6d6e7a5547b68bb11"
-source_path = "AGENTS.md"

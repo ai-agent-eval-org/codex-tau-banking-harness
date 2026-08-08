@@ -35,17 +35,6 @@ class ProtocolError(RuntimeError):
 
 _ALLOWED_ITEM_TYPES = {"userMessage", "agentMessage", "reasoning", "dynamicToolCall"}
 TURN_OUTPUT_TIMEOUT_SECONDS = 600
-BASE_INSTRUCTIONS = (
-    "You are the evaluated Rho-Bank support agent. Follow the supplied policy "
-    "and experiment prompt. Use only the supplied dynamic tools. Do not use "
-    "native Codex capabilities. For knowledge-base retrieval, prefer "
-    "KB_search_bm25 or KB_search_dense. Use the dynamic shell only for targeted "
-    "inspection of known files or patterns. Never request broad directory "
-    "enumeration or an unbounded file read; every shell command must target "
-    "specific evidence and bound its output with head, tail, sed ranges, or "
-    "grep limits."
-)
-BASE_INSTRUCTIONS_SHA256 = hashlib.sha256(BASE_INSTRUCTIONS.encode()).hexdigest()
 
 
 def reject_native_item(item: Mapping[str, Any]) -> None:
@@ -202,8 +191,7 @@ class CodexAppServer:
         *,
         repo_root: Path,
         tools: list[Any],
-        domain_policy: str,
-        prompt: str,
+        system_prompt: str,
         auth_file: Path | None = None,
         transport: JsonRpcProcess | None = None,
         audit_sink: Callable[[Mapping[str, Any]], None] | None = None,
@@ -219,7 +207,9 @@ class CodexAppServer:
         self._final_text: str | None = None
         self._audit_sink = audit_sink
         self.audit: dict[str, Any] = {
-            "base_instructions_sha256": BASE_INSTRUCTIONS_SHA256,
+            "base_instructions_sha256": hashlib.sha256(
+                system_prompt.encode()
+            ).hexdigest(),
             "dynamic_call_count": 0,
             "dynamic_call_names": [],
             "last_protocol_method": None,
@@ -249,7 +239,7 @@ class CodexAppServer:
         os.symlink(source_auth.resolve(), home / "auth.json")
         child_env["CODEX_HOME"] = str(home)
         self.transport = JsonRpcProcess(command, Path(self._temporary_cwd.name), child_env)
-        self._initialize(domain_policy, prompt)
+        self._initialize(system_prompt)
 
     def _checkpoint(self, method: str | None = None) -> None:
         if method is not None:
@@ -258,7 +248,7 @@ class CodexAppServer:
         if self._audit_sink is not None:
             self._audit_sink(dict(self.audit))
 
-    def _initialize(self, domain_policy: str, prompt: str) -> None:
+    def _initialize(self, system_prompt: str) -> None:
         self.transport.request(
             "initialize",
             {
@@ -287,16 +277,13 @@ class CodexAppServer:
                 "cwd": empty_cwd,
                 "approvalPolicy": "never",
                 "sandbox": "read-only",
+                "personality": "none",
                 "allowProviderModelFallback": False,
                 "ephemeral": True,
-                "baseInstructions": BASE_INSTRUCTIONS,
-                "developerInstructions": (
-                    "<domain_policy>\n"
-                    + domain_policy
-                    + "\n</domain_policy>\n<experiment_prompt>\n"
-                    + prompt
-                    + "\n</experiment_prompt>"
-                ),
+                "baseInstructions": system_prompt,
+                # An explicit empty string suppresses app-server collaboration-mode
+                # developer instructions; null means "use built-ins".
+                "developerInstructions": "",
                 "dynamicTools": list(self.catalog.specs),
                 "environments": [],
                 "runtimeWorkspaceRoots": [],
@@ -332,7 +319,8 @@ class CodexAppServer:
                 "threadId": self._thread_id,
                 "input": [{"type": "text", "text": user_text}],
                 "model": "gpt-5.4",
-                "effort": "xhigh",
+                "effort": "high",
+                "personality": "none",
                 "approvalPolicy": "never",
                 "sandboxPolicy": {"type": "readOnly"},
                 "environments": [],

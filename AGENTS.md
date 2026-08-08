@@ -55,10 +55,14 @@ task_102
 - Test runs must disable per-task console summaries. Inspect only aggregate
   completion, infrastructure integrity, and final score; do not open test
   trajectories or task-level rewards during prompt development.
-- Keep the evaluation configuration fixed at `alltools`, the official τ-bench
-  dynamic-tool schemas, GPT-5.4/xhigh through personal ChatGPT authentication,
-  and GPT-5.2/low for the official user simulator. The Platform API key may be
-  used only by the simulator and `alltools` embeddings, never by Codex.
+- Keep the reference configuration fixed at `terminal_use`, the exact standard
+  τ-bench `LLMAgent` system-prompt constructor, the official runtime tool
+  schemas, GPT-5.4/high through personal ChatGPT authentication, 200 maximum
+  steps, and GPT-5.2/low for the official user simulator. The Platform API key
+  may be used only by the simulator, never by Codex.
+- A custom or optimized prompt is a separately named experiment and must never
+  be represented as reference-comparable. The reference profile has no custom
+  prompt artifact or additional developer instructions.
 - Keep task IDs and trial counts explicit. Do not run all 97 tasks or add trials
   without fresh authorization for that exact local cost scope.
 - Do not commit raw runs, credentials, embedding caches, or large artifacts.

@@ -109,7 +109,7 @@ def require_chatgpt_account(result: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def require_model_catalog(result: Mapping[str, Any]) -> dict[str, Any]:
-    """Require a visible GPT-5.4 entry that explicitly advertises xhigh."""
+    """Require a visible GPT-5.4 entry that explicitly advertises high."""
     models = result.get("data")
     if not isinstance(models, list):
         raise AuthError("Codex model catalog response is malformed")
@@ -123,8 +123,8 @@ def require_model_catalog(result: Mapping[str, Any]) -> dict[str, Any]:
             item.get("reasoningEffort") if isinstance(item, Mapping) else item
             for item in efforts
         }
-        if model.get("hidden") is True or "xhigh" not in values:
-            raise AuthError("GPT-5.4 is hidden or does not advertise xhigh reasoning")
+        if model.get("hidden") is True or "high" not in values:
+            raise AuthError("GPT-5.4 is hidden or does not advertise high reasoning")
         return {
             "requested": "gpt-5.4",
             "observed": model.get("model") or model.get("id"),

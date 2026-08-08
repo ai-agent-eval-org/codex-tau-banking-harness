@@ -20,16 +20,19 @@ from tau2.domains.banking_knowledge.environment import (
     get_knowledge_base,
 )
 from tau2.domains.banking_knowledge.retrieval import get_info_policy_override
-from tau2.domains.banking_knowledge.retrieval_toolkits import KnowledgeToolsAllTools
+from tau2.domains.banking_knowledge.retrieval_toolkits import KnowledgeToolsWithShell
 from tau2.registry import registry
 from tau2.runner.batch import run_tasks
 from tau2.runner.helpers import get_tasks
 
 from .agent import create_codex_tau_agent
-from .app_server import BASE_INSTRUCTIONS_SHA256, CodexAppServer
+from .app_server import CodexAppServer
 from .auth import CODEX_VERSION
 from .manifest import write_manifest
-from .prompt import VerifiedPrompt, verify_prompt
+from .prompt import (
+    STANDARD_AGENT_INSTRUCTION_SHA256,
+    standard_system_prompt,
+)
 from .task_split import (
     SPLIT_ALGORITHM,
     SPLIT_SEED,
@@ -69,38 +72,35 @@ def _repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
 
-def load_experiment(path: Path) -> tuple[dict[str, Any], dict[str, Any]]:
+def load_experiment(path: Path) -> dict[str, Any]:
     with path.open("rb") as handle:
         raw = tomllib.load(handle)
     experiment = raw.get("experiment")
-    provenance = raw.get("experttrace")
-    if not isinstance(experiment, dict) or not isinstance(provenance, dict):
-        raise ExperimentError("experiment TOML needs [experiment] and [experttrace]")
+    if not isinstance(experiment, dict):
+        raise ExperimentError("experiment TOML needs [experiment]")
     required = {
+        "profile": "tau_reference_trial0",
         "domain": "banking_knowledge",
-        "retrieval": "alltools",
+        "retrieval": "terminal_use",
         "agent_model": "gpt-5.4",
-        "agent_reasoning": "xhigh",
+        "agent_reasoning": "high",
         "user_model": "gpt-5.2",
         "user_reasoning": "low",
         "seed": 300,
         "trials_per_task": 1,
+        "max_steps": 200,
+        "max_errors": 10,
     }
     for key, expected in required.items():
         if experiment.get(key) != expected:
             raise ExperimentError(
                 f"{key} must remain {expected!r}, got {experiment.get(key)!r}"
             )
-    arm = experiment.get("arm")
-    if arm not in {"baseline", "candidate"}:
-        raise ExperimentError("arm must be baseline or candidate")
     partition = experiment.get("task_partition")
     if partition == "smoke":
         authorized_task_ids = SMOKE_TASK_IDS
         expected_concurrency = 1
     elif partition == "test":
-        if arm != "candidate":
-            raise ExperimentError("the frozen test partition must use the candidate arm")
         authorized_task_ids = TEST_TASK_IDS
         expected_concurrency = 4
     else:
@@ -113,23 +113,17 @@ def load_experiment(path: Path) -> tuple[dict[str, Any], dict[str, Any]]:
         raise ExperimentError(
             f"max_concurrency must be {expected_concurrency} for {partition}"
         )
-    expected_path = f"prompts/banking_knowledge/{arm}.md"
-    if experiment.get("prompt_path") != expected_path:
-        raise ExperimentError(f"{arm} prompt must be {expected_path}")
-    if not provenance.get("project_id") or not provenance.get("workspace_branch"):
-        raise ExperimentError("ExpertTrace project/workspace provenance is required")
-    if arm == "candidate" and not all(
-        provenance.get(key) for key in ("optimization_id", "candidate_branch")
-    ):
-        raise ExperimentError("candidate optimization provenance is required")
-    return experiment, provenance
+    forbidden = {"prompt_path", "custom_prompt", "developer_instructions"}
+    if forbidden & experiment.keys():
+        raise ExperimentError("the reference profile forbids custom prompt fields")
+    return experiment
 
 
-def _alltools_contract() -> tuple[list[Any], str]:
-    """Build exact schemas without constructing embedder/sandbox runtimes."""
-    toolkit = KnowledgeToolsAllTools(get_db(), object(), object(), object())
+def _terminal_contract() -> tuple[list[Any], str]:
+    """Build terminal_use schemas without constructing the sandbox runtime."""
+    toolkit = KnowledgeToolsWithShell(get_db(), object())
     tools = list(toolkit.get_tools().values())
-    policy = get_info_policy_override("alltools", get_knowledge_base())
+    policy = get_info_policy_override("terminal_use", get_knowledge_base())
     return tools, policy
 
 
@@ -138,11 +132,11 @@ def _require_parent_prerequisites() -> dict[str, str]:
     if not key:
         raise ExperimentError(
             "OPENAI_API_KEY is unavailable to the parent τ-bench process; "
-            "alltools embeddings and the GPT-5.2 simulator cannot run"
+            "the GPT-5.2 simulator cannot run"
         )
     sandbox = shutil.which("srt")
     if sandbox is None:
-        raise ExperimentError("alltools requires the `srt` sandbox executable")
+        raise ExperimentError("terminal_use requires the `srt` sandbox executable")
     completed = subprocess.run(
         [sandbox, "--version"], capture_output=True, check=False, text=True, timeout=30
     )
@@ -155,22 +149,21 @@ def preflight(
     experiment_path: Path, *, require_platform_key: bool = True
 ) -> dict[str, Any]:
     repo_root = _repo_root()
-    experiment, provenance = load_experiment(experiment_path)
+    experiment = load_experiment(experiment_path)
     task_ids = tuple(experiment["task_ids"])
-    prompt = verify_prompt(repo_root, experiment, provenance)
     prerequisites = (
         _require_parent_prerequisites() if require_platform_key else {}
     )
     tasks = get_tasks("banking_knowledge", task_split_name=None, task_ids=task_ids)
     if tuple(task.id for task in tasks) != task_ids:
         raise ExperimentError("τ-bench returned a different frozen task ordering")
-    tools, policy = _alltools_contract()
+    tools, policy = _terminal_contract()
     catalog = ToolCatalog(tools)
+    system_prompt = standard_system_prompt(policy)
     runtime = CodexAppServer(
         repo_root=repo_root,
         tools=tools,
-        domain_policy=policy,
-        prompt=prompt.text,
+        system_prompt=system_prompt,
     )
     try:
         runtime_audit = dict(runtime.audit)
@@ -187,8 +180,9 @@ def preflight(
         "task_ids": list(task_ids),
         "task_count": len(task_ids),
         "local_split_sha256": split_sha256(),
-        "prompt_sha256": prompt.sha256,
-        "base_instructions_sha256": BASE_INSTRUCTIONS_SHA256,
+        "prompt_mode": "tau2_standard_llm_agent",
+        "agent_instruction_sha256": STANDARD_AGENT_INSTRUCTION_SHA256,
+        "system_prompt_sha256": _sha256_text(system_prompt),
         "policy_sha256": _sha256_text(policy),
         "tool_names": list(catalog.names),
         "tool_schema_sha256": catalog.hash,
@@ -255,9 +249,8 @@ def _validate_results(results: Results, task_ids: tuple[str, ...]) -> None:
 def run_experiment(experiment_path: Path) -> Path:
     started_at = _utc_now()
     repo_root = _repo_root()
-    experiment, provenance = load_experiment(experiment_path)
+    experiment = load_experiment(experiment_path)
     task_ids = tuple(experiment["task_ids"])
-    verified_prompt: VerifiedPrompt = verify_prompt(repo_root, experiment, provenance)
     check = preflight(experiment_path)
 
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
@@ -279,14 +272,13 @@ def run_experiment(experiment_path: Path) -> Path:
         llm_args_agent={
             "repo_root": str(repo_root),
             "audit_dir": str(audit_dir),
-            "prompt": verified_prompt.text,
         },
         user="user_simulator",
         llm_user="gpt-5.2",
         llm_args_user={"reasoning_effort": "low"},
         num_trials=1,
-        max_steps=100,
-        max_errors=10,
+        max_steps=experiment["max_steps"],
+        max_errors=experiment["max_errors"],
         max_concurrency=experiment["max_concurrency"],
         seed=experiment["seed"],
         max_retries=0,
@@ -294,7 +286,7 @@ def run_experiment(experiment_path: Path) -> Path:
         auto_resume=False,
         auto_review=False,
         verbose_logs=False,
-        retrieval_config="alltools",
+        retrieval_config=experiment["retrieval"],
     )
     run_tasks(
         config,
@@ -332,7 +324,10 @@ def run_experiment(experiment_path: Path) -> Path:
     ended_at = _utc_now()
     manifest = {
         "format_version": 1,
-        "experiment": {"name": experiment["name"], "arm": experiment["arm"]},
+        "experiment": {
+            "name": experiment["name"],
+            "profile": experiment["profile"],
+        },
         "harness": {
             "repository": "https://github.com/ai-agent-eval-org/codex-tau-banking-harness",
             "commit": _git_head(repo_root),
@@ -344,7 +339,7 @@ def run_experiment(experiment_path: Path) -> Path:
             "observed_models": sorted(
                 {str(audit["observed_thread_model"]) for audit in audits}
             ),
-            "reasoning_effort": "xhigh",
+            "reasoning_effort": "high",
             "authentication_mode": "chatgpt",
             "plan_type": audits[0]["account"].get("plan_type"),
             "rate_limit_ids": check.get("rate_limit_ids", []),
@@ -353,22 +348,17 @@ def run_experiment(experiment_path: Path) -> Path:
             "denied_native_event_observed": False,
         },
         "prompt": {
-            "path": verified_prompt.path,
-            "sha256": verified_prompt.sha256,
-            "common_base_instructions_sha256": BASE_INSTRUCTIONS_SHA256,
-            "source_path": verified_prompt.source_path,
-            "source_commit": verified_prompt.source_commit,
-            "workspace_branch": provenance["workspace_branch"],
-            "candidate_branch": provenance.get("candidate_branch") or None,
-        },
-        "experttrace": {
-            "project_id": provenance["project_id"],
-            "workspace": provenance["workspace"],
-            "optimization_id": provenance.get("optimization_id") or None,
+            "mode": "tau2_standard_llm_agent",
+            "custom_prompt": False,
+            "agent_instruction_sha256": STANDARD_AGENT_INSTRUCTION_SHA256,
+            "effective_system_prompt_sha256": _sha256_text(
+                standard_system_prompt(policy)
+            ),
+            "additional_developer_instructions": False,
         },
         "banking": {
             "domain": "banking_knowledge",
-            "retrieval": "alltools",
+            "retrieval": experiment["retrieval"],
             "policy_sha256": _sha256_text(policy),
             "ordered_tool_names": check["tool_names"],
             "tool_schema_sha256": check["tool_schema_sha256"],
@@ -387,6 +377,8 @@ def run_experiment(experiment_path: Path) -> Path:
             "task_partition": experiment["task_partition"],
             "task_ids": list(task_ids),
             "trials_per_task": 1,
+            "max_steps": experiment["max_steps"],
+            "max_errors": experiment["max_errors"],
             "max_concurrency": experiment["max_concurrency"],
             "simulation_count": len(task_ids),
             "dynamic_tool_call_count": dynamic_calls,

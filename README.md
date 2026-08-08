@@ -6,8 +6,8 @@ This repository is a minimal, fail-closed adapter between the official
 `0.147.0`.
 
 The evaluated agent uses a personal ChatGPT/Codex login. The parent τ-bench
-process may use `OPENAI_API_KEY` only for the official GPT-5.2 user simulator
-and `alltools` OpenAI embeddings. The child Codex process is launched with a
+process may use `OPENAI_API_KEY` only for the official GPT-5.2 user simulator.
+The `terminal_use` reference profile does not use embeddings. The child Codex process is launched with a
 sanitized environment and must report a ChatGPT account before a simulation can
 start.
 
@@ -35,20 +35,22 @@ returned to the official τ-bench orchestrator for execution. The tool named
 `shell` is therefore τ-bench's read-only `sandbox-runtime` tool, never Codex's
 native shell.
 
-The common app-server instructions prefer BM25/dense retrieval and require any
-use of τ-bench's dynamic `shell` to target known evidence and bound its output.
-This leaves the authoritative tool schema, execution, and result untouched while
-avoiding broad listings that can exceed Codex app-server's reliable dynamic-tool
-continuation size. The exact common-instruction hash is recorded by preflight and
-in every run manifest, separately from the baseline/candidate prompt hash.
+The harness imports τ-bench's own `AGENT_INSTRUCTION` and `SYSTEM_PROMPT` and
+uses that exact rendered string as the app-server base instructions. It supplies
+an explicit empty developer-instruction string and has no custom prompt artifact.
+The active profile therefore contains none of the prior BM25/dense retrieval or
+shell-bounding encouragement.
 
 Codex runs from an empty temporary directory and a temporary `CODEX_HOME` that
 contains only the benchmark configuration and a link to the user's existing
 `auth.json`. Strict configuration disables Codex shell/exec, web/browser, MCP
-discovery, apps, plugins, hooks, goals, user-input, and subagent features
-exposed by this pinned version. The adapter independently aborts if any denied
-filesystem, plan, or other native-capability event is observed. Repository
-`AGENTS.md` files are not discovered by the evaluated process.
+discovery, bundled skills, apps, plugins, hooks, goals, user-input, image, and
+subagent features exposed by this pinned version. It also disables permissions,
+environment, collaboration, app, skill, and personality instruction injection.
+The pinned Codex prompt debugger must render only the supplied user message.
+The adapter independently aborts if any denied filesystem, plan, or other
+native-capability event is observed. Repository `AGENTS.md` files are not
+discovered by the evaluated process.
 
 ## Exact installation
 
@@ -86,7 +88,7 @@ Log into the project-local Codex CLI with a personal ChatGPT account:
 By default the harness reads `${CODEX_HOME:-$HOME/.codex}/auth.json`. It starts
 app-server with `forced_login_method = "chatgpt"`, calls `account/read`, and
 requires `account.type == "chatgpt"`. It also verifies that GPT-5.4 advertises
-`xhigh` reasoning and rejects model rerouting or provider fallback.
+`high` reasoning and rejects model rerouting or provider fallback.
 
 Place a Platform API key in the parent environment for the two official
 τ-bench components that cannot use a Codex subscription:
@@ -95,8 +97,7 @@ Place a Platform API key in the parent environment for the two official
 export OPENAI_API_KEY='...'
 ```
 
-The GPT-5.2 user simulator and `text-embedding-3-large` retrieval calls can
-consume Platform credits. Evaluated GPT-5.4 agent inference uses the personal
+The GPT-5.2 user simulator can consume Platform credits. Evaluated GPT-5.4 agent inference uses the personal
 ChatGPT/Codex allowance. Never put a key in an experiment TOML file or run
 manifest.
 
@@ -132,19 +133,16 @@ labeling must use train only; the test partition is aggregate evaluation only.
 
 The fixed tasks were selected before scoring: `task_001` is a product
 retrieval/recommendation task; `task_004` exercises the distinct account
-ownership and human-transfer path. Each arm uses one trial, seed 300,
-`alltools`, GPT-5.4/xhigh for Codex, and GPT-5.2/low for the official user
-simulator.
+ownership and human-transfer path. The reference smoke uses one trial, seed
+300, `terminal_use`, GPT-5.4/high, 200 maximum steps, and GPT-5.2/low for the
+official user simulator.
 
 Load the configured Platform key into the parent process, then run exactly one
 arm at a time:
 
 ```bash
-uv run codex-tau preflight experiments/smoke-baseline.toml
-uv run codex-tau run experiments/smoke-baseline.toml
-
-uv run codex-tau preflight experiments/smoke-candidate.toml
-uv run codex-tau run experiments/smoke-candidate.toml
+uv run codex-tau preflight experiments/smoke-reference.toml
+uv run codex-tau run experiments/smoke-reference.toml
 ```
 
 `preflight` performs no model inference. `run` refuses any task list other than
@@ -153,13 +151,13 @@ trial counts other than one.
 
 ## Frozen test run
 
-The candidate prompt can be evaluated once on the frozen test partition with
-the same `alltools`, model, reasoning, simulator, and authentication boundaries
-as the smoke harness:
+The standard τ-bench prompt can be evaluated once on the frozen test partition
+with the same `terminal_use`, model, reasoning, simulator, step limit, and
+authentication boundaries as the smoke harness:
 
 ```bash
-uv run codex-tau preflight experiments/test-candidate.toml
-uv run codex-tau run experiments/test-candidate.toml
+uv run codex-tau preflight experiments/test-reference.toml
+uv run codex-tau run experiments/test-reference.toml
 ```
 
 The experiment contains all 49 test IDs explicitly. Its manifest records the
@@ -167,35 +165,24 @@ split algorithm, seed, counts, digest, exact task IDs, tool-schema digest, and
 Pass@1. Per-task console summaries are disabled for held-out runs. Test
 trajectories must not be used for subsequent prompt optimization.
 
-## ExpertTrace prompt provenance
+## Reference comparability
 
-The ExpertTrace workflow used for the existing candidate optimized a root
-`AGENTS.md`, not an arbitrary prompt path. This repository preserves the
-historical prompt provenance while using the current root `AGENTS.md` for
-repository evaluation rules:
-
-- the pinned ExpertTrace workspace commit stores the baseline bytes in
-  `AGENTS.md`;
-- the pinned optimization commit stores the candidate bytes in `AGENTS.md`;
-- `prompts/banking_knowledge/*.md` contains those exact bytes for the harness;
-- each experiment pins the source branch, commit, path, project, workspace, and
-  optimization identifiers;
-- the runner verifies `git show <source-commit>:AGENTS.md` byte-for-byte before
-  starting Codex.
-
-The current repository `AGENTS.md` is not an evaluated prompt. The app-server
-runs outside the repository and the harness loads the prompt file only after
-verifying it against its historical source commit, so repository instructions
-are not exposed to the evaluated model.
+The controllable trajectory settings now match the external reference's
+GPT-5.4/high, GPT-5.2/low, seed 300, `terminal_use`, 200-step configuration and
+standard τ-bench prompt. See [REFERENCE_PARITY.md](REFERENCE_PARITY.md) for the
+remaining known and unknown differences. In particular, app-server/ChatGPT
+inference is not the same transport or orchestration as τ-bench's standard
+Platform-backed `llm_agent`, and the external result predates this repository's
+pinned τ-bench v1.0.1 data.
 
 ## Artifacts and leaderboard scope
 
-Local output is written below `runs/<arm>-<timestamp>/` and includes τ-bench's
+Local output is written below `runs/<experiment>-<timestamp>/` and includes τ-bench's
 `results.json`, per-task adapter audits, and `manifest.json`. Everything below
 `runs/` except `.gitkeep` is ignored. The 410 MiB reference result, auth state,
 raw databases, embedding caches, and credentials are never copied or committed.
 
-Smoke results prove integration and prompt replacement only. The frozen
+Smoke results prove integration and setting parity only. The frozen
 test-partition result is a local, single-trial held-out estimate, not an official
 full-domain leaderboard score. Neither is leaderboard-valid, and neither may be
 submitted. The standing non-submission rule in

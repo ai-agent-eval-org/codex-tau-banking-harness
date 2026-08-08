@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from tau2.data_model.message import MultiToolMessage, ToolMessage
 from tau2.domains.banking_knowledge.environment import get_db
-from tau2.domains.banking_knowledge.retrieval_toolkits import KnowledgeToolsAllTools
+from tau2.domains.banking_knowledge.retrieval_toolkits import KnowledgeToolsWithShell
 
 from codex_tau.tool_bridge import ToolCallBroker, ToolCatalog
 
 
 def broker() -> ToolCallBroker:
-    toolkit = KnowledgeToolsAllTools(get_db(), object(), object(), object())
+    toolkit = KnowledgeToolsWithShell(get_db(), object())
     return ToolCallBroker(ToolCatalog(toolkit.get_tools().values()))
 
 
@@ -76,4 +76,3 @@ def test_parallel_calls_keep_request_order_despite_result_order() -> None:
         "first",
         "second",
     ]
-
