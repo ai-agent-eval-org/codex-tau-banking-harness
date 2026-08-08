@@ -11,6 +11,7 @@ from codex_tau.app_server import CodexAppServer, ProtocolError, reject_native_it
 class FakeTransport:
     def __init__(self, messages: list[dict]):
         self.inbox = queue.Queue()
+        self.stderr_line_count = 0
         for message in messages:
             self.inbox.put(message)
 
@@ -93,3 +94,22 @@ def test_enabled_remote_control_status_fails_closed() -> None:
     )
     with pytest.raises(ProtocolError, match="remote control"):
         runtime._wait_for_output()
+
+
+def test_stalled_turn_reports_last_protocol_boundary() -> None:
+    snapshots: list[dict] = []
+    transport = FakeTransport([])
+    runtime = CodexAppServer(
+        repo_root=Path("."),
+        tools=[],
+        domain_policy="policy",
+        prompt="prompt",
+        transport=transport,  # type: ignore[arg-type]
+        audit_sink=snapshots.append,
+    )
+    runtime.audit["last_protocol_method"] = "turn/start:accepted"
+    with pytest.raises(ProtocolError, match="turn/start:accepted"):
+        runtime._wait_for_output(timeout=0)
+    assert snapshots[-1]["last_protocol_method"] == "turn/output:timed_out"
+    assert snapshots[-1]["timeout_after_protocol_method"] == "turn/start:accepted"
+    assert snapshots[-1]["app_server_stderr_line_count"] == 0

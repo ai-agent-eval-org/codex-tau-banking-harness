@@ -51,7 +51,18 @@ class CodexTauAgent(HalfDuplexAgent[CodexAgentState]):
             tools=tools,
             domain_policy=domain_policy,
             prompt=prompt,
+            audit_sink=self._write_audit,
         )
+
+    def _write_audit(self, audit: dict[str, Any]) -> None:
+        self.audit_path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = self.audit_path.with_suffix(".tmp")
+        temporary.write_text(json.dumps(audit, indent=2, sort_keys=True) + "\n")
+        temporary.replace(self.audit_path)
+
+    def _checkpoint(self, stage: str) -> None:
+        self.runtime.audit["adapter_stage"] = stage
+        self._write_audit(self.runtime.audit)
 
     def get_init_state(
         self, message_history: list[Message] | None = None
@@ -75,9 +86,11 @@ class CodexTauAgent(HalfDuplexAgent[CodexAgentState]):
         if isinstance(message, UserMessage):
             if not isinstance(message.content, str):
                 raise ValueError("CodexTauAgent requires a text user message")
+            self._checkpoint("agent_turn_starting")
             output, finished = self.runtime.start_turn(message.content)
             state.messages.append(message)
         elif isinstance(message, (ToolMessage, MultiToolMessage)):
+            self._checkpoint("tool_result_returning")
             output, finished = self.runtime.continue_turn(message)
             if isinstance(message, MultiToolMessage):
                 state.messages.extend(message.tool_messages)
@@ -86,6 +99,7 @@ class CodexTauAgent(HalfDuplexAgent[CodexAgentState]):
         else:  # pragma: no cover - protected by τ-bench's participant type
             raise TypeError(f"unsupported input message: {type(message).__name__}")
 
+        self._checkpoint("agent_output_returned")
         if finished:
             if not isinstance(output, str):
                 raise TypeError("final Codex output was not text")
@@ -103,10 +117,7 @@ class CodexTauAgent(HalfDuplexAgent[CodexAgentState]):
         state: CodexAgentState | None = None,
     ) -> None:
         try:
-            self.audit_path.parent.mkdir(parents=True, exist_ok=True)
-            self.audit_path.write_text(
-                json.dumps(self.runtime.audit, indent=2, sort_keys=True) + "\n"
-            )
+            self._checkpoint("stopped")
         finally:
             self.runtime.close()
 

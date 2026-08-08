@@ -10,6 +10,7 @@ import shutil
 import tempfile
 import threading
 import time
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -32,7 +33,7 @@ class ProtocolError(RuntimeError):
 
 
 _ALLOWED_ITEM_TYPES = {"userMessage", "agentMessage", "reasoning", "dynamicToolCall"}
-TURN_OUTPUT_TIMEOUT_SECONDS = 1800
+TURN_OUTPUT_TIMEOUT_SECONDS = 600
 
 
 def reject_native_item(item: Mapping[str, Any]) -> None:
@@ -47,6 +48,7 @@ class JsonRpcProcess:
 
     def __init__(self, command: list[str], cwd: Path, env: Mapping[str, str]):
         self.inbox: queue.Queue[Mapping[str, Any]] = queue.Queue()
+        self.stderr_line_count = 0
         self._loop = asyncio.new_event_loop()
         self._thread = threading.Thread(target=self._run_loop, daemon=True)
         self._thread.start()
@@ -83,7 +85,9 @@ class JsonRpcProcess:
     async def _drain_stderr(self) -> None:
         assert self._process is not None and self._process.stderr is not None
         while await self._process.stderr.readline():
-            pass
+            # stderr can contain sensitive provider diagnostics, so retain only
+            # a count for timeout diagnostics rather than the lines themselves.
+            self.stderr_line_count += 1
 
     async def _read_stdout(self) -> None:
         assert self._process is not None and self._process.stdout is not None
@@ -190,6 +194,7 @@ class CodexAppServer:
         prompt: str,
         auth_file: Path | None = None,
         transport: JsonRpcProcess | None = None,
+        audit_sink: Callable[[Mapping[str, Any]], None] | None = None,
     ):
         self.repo_root = repo_root
         self.catalog = ToolCatalog(tools)
@@ -200,12 +205,18 @@ class CodexAppServer:
         self._thread_id: str | None = None
         self._turn_id: str | None = None
         self._final_text: str | None = None
+        self._audit_sink = audit_sink
         self.audit: dict[str, Any] = {
             "dynamic_call_count": 0,
             "dynamic_call_names": [],
+            "last_protocol_method": None,
             "native_capability_denied": False,
             "model_rerouted": False,
+            "protocol_event_count": 0,
             "remote_control_statuses": [],
+            "tool_results_returned": 0,
+            "turns_completed": 0,
+            "turns_started": 0,
         }
 
         if transport is not None:
@@ -226,6 +237,13 @@ class CodexAppServer:
         child_env["CODEX_HOME"] = str(home)
         self.transport = JsonRpcProcess(command, Path(self._temporary_cwd.name), child_env)
         self._initialize(domain_policy, prompt)
+
+    def _checkpoint(self, method: str | None = None) -> None:
+        if method is not None:
+            self.audit["last_protocol_method"] = method
+            self.audit["protocol_event_count"] += 1
+        if self._audit_sink is not None:
+            self._audit_sink(dict(self.audit))
 
     def _initialize(self, domain_policy: str, prompt: str) -> None:
         self.transport.request(
@@ -292,10 +310,13 @@ class CodexAppServer:
         self._thread_id = thread_value["id"]
         self.audit["instruction_sources"] = []
         self.audit["observed_thread_model"] = observed_model
+        self._checkpoint("thread/start:accepted")
 
     def start_turn(self, user_text: str) -> tuple[str | list[ToolCall], bool]:
         if not self._thread_id:
             raise ProtocolError("app-server thread was not initialized")
+        self.audit["turns_started"] += 1
+        self._checkpoint("turn/start:requesting")
         result = self.transport.request(
             "turn/start",
             {
@@ -315,13 +336,18 @@ class CodexAppServer:
             raise ProtocolError("turn/start returned no turn ID")
         self._turn_id = turn["id"]
         self._final_text = None
+        self._checkpoint("turn/start:accepted")
         return self._wait_for_output()
 
     def continue_turn(
         self, message: ToolMessage | MultiToolMessage
     ) -> tuple[str | list[ToolCall], bool]:
-        for request_id, result in self.broker.resolve(message):
+        responses = self.broker.resolve(message)
+        self.audit["tool_results_returned"] += len(responses)
+        self._checkpoint("item/tool/call:responding")
+        for request_id, result in responses:
             self.transport.respond(request_id, result)
+        self._checkpoint("item/tool/call:responded")
         return self._wait_for_output()
 
     def _wait_for_output(
@@ -332,7 +358,17 @@ class CodexAppServer:
         while True:
             remaining = deadline - time.monotonic()
             if remaining <= 0:
-                raise ProtocolError("timed out waiting for Codex turn output")
+                timeout_after = self.audit["last_protocol_method"]
+                self.audit["app_server_stderr_line_count"] = getattr(
+                    self.transport, "stderr_line_count", 0
+                )
+                self.audit["timeout_after_protocol_method"] = timeout_after
+                self._checkpoint("turn/output:timed_out")
+                raise ProtocolError(
+                    "timed out waiting for Codex turn output after "
+                    f"{timeout:g}s; last protocol method was "
+                    f"{timeout_after!r}"
+                )
             try:
                 message = self.transport.inbox.get(timeout=min(remaining, 0.25))
             except queue.Empty:
@@ -343,6 +379,13 @@ class CodexAppServer:
                 raise ProtocolError(str(message["transportError"]))
             method = message.get("method")
             params = message.get("params") or {}
+            if method not in {
+                "item/agentMessage/delta",
+                "item/reasoning/summaryTextDelta",
+                "item/reasoning/textDelta",
+                "thread/tokenUsage/updated",
+            }:
+                self._checkpoint(str(method))
             if "id" in message:
                 if method != "item/tool/call":
                     self.audit["native_capability_denied"] = True
@@ -390,6 +433,8 @@ class CodexAppServer:
                     raise ProtocolError("turn completed with unresolved dynamic calls")
                 if self._final_text is None:
                     raise ProtocolError("Codex completed without a final answer")
+                self.audit["turns_completed"] += 1
+                self._checkpoint("turn/completed:accepted")
                 return self._final_text, True
             # Benign lifecycle/delta notifications carry no new capability.
             if method in {
