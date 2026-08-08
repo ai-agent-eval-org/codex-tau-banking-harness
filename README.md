@@ -7,10 +7,10 @@ This repository is a minimal, fail-closed adapter between the official
 
 The evaluated agent uses a personal ChatGPT/Codex login. The parent τ-bench
 process may use `OPENAI_API_KEY` only for the official GPT-5.2 user simulator
-and, in the optional `alltools` pilot, OpenAI embeddings. The `terminal_use`
-reference profile does not use embeddings. The child Codex process is launched with a
-sanitized environment and must report a ChatGPT account before a simulation can
-start.
+and, in an `alltools` experiment, OpenAI embeddings. The `terminal_use`
+reference profile does not use embeddings. The child Codex process is launched
+with a sanitized environment and must report a ChatGPT account before a
+simulation can start.
 
 ## Non-submission rule
 
@@ -36,12 +36,22 @@ returned to the official τ-bench orchestrator for execution. The tool named
 `shell` is therefore τ-bench's read-only `sandbox-runtime` tool, never Codex's
 native shell.
 
-The harness imports τ-bench's own `AGENT_INSTRUCTION` and `SYSTEM_PROMPT` and
-uses that exact rendered string as the app-server base instructions. It supplies
-an explicit empty developer-instruction string and has no custom prompt artifact.
-The reference profile uses τ-bench's `terminal_use` policy. The separately
-labeled pilot uses τ-bench's unmodified `alltools` policy and adds its official
-BM25 and dense-search tools; it adds no harness-authored prompting.
+The reference and vanilla arms import τ-bench's own `AGENT_INSTRUCTION` and
+`SYSTEM_PROMPT` and use that exact rendered string as the app-server base
+instructions. They supply an explicit empty developer-instruction string and
+have no custom prompt artifact. The reference profile uses τ-bench's
+`terminal_use` policy. The separately labeled alltools arms use τ-bench's
+unmodified `alltools` policy and toolkit, including its official BM25,
+dense-search, and shell tools.
+
+The future optimized-test arm is fail-closed around one substitution only. It
+may load a nonempty UTF-8 replacement for `AGENT_INSTRUCTION` from exactly
+`prompts/banking_knowledge/optimized-agent-instruction.md`, and its experiment
+must pin the artifact's SHA-256. The harness still renders τ-bench's unmodified
+`SYSTEM_PROMPT` with the authoritative runtime `alltools` domain policy. Custom
+policy text, alternate prompt paths, extra fields, and developer instructions
+are rejected. The artifact and optimized config are intentionally absent until
+fresh train traces exist.
 
 Codex runs from an empty temporary directory and a temporary `CODEX_HOME` that
 contains only the benchmark configuration and a link to the user's existing
@@ -119,8 +129,9 @@ uv run ruff check src tests
 
 The tests do not call a model. They cover child-environment sanitization,
 ChatGPT auth enforcement, version pinning, strict Codex configuration,
-authoritative schema parity, malformed/unknown tool rejection, single and
-multi-tool callback ordering, native-tool denial, prompt provenance, and τ-bench
+authoritative terminal-use and alltools schema parity, malformed/unknown tool
+rejection, single and multi-tool callback ordering, native-tool denial, prompt
+path/hash/UTF-8 provenance, post-run audit enforcement, and τ-bench
 message/result serialization.
 
 ## Frozen local train/test split
@@ -154,9 +165,9 @@ uv run codex-tau preflight experiments/smoke-reference.toml
 uv run codex-tau run experiments/smoke-reference.toml
 ```
 
-`preflight` performs no model inference. `run` accepts only the exact task,
-trial, and concurrency combinations declared below or the frozen 49-task
-single-trial reference partition.
+`preflight` performs no model inference. `run` accepts only an exact named
+experiment matrix in the code allowlist; name, filename, profile, partition,
+task ordering, trials, concurrency, and prompt fields must all match.
 
 ## Two-task alltools concurrency validation
 
@@ -201,6 +212,42 @@ uv run codex-tau run experiments/pilot5-alltools-concurrency16.toml
 The runtime allowlist accepts only this exact concurrency-16 combination; it
 does not authorize arbitrary task expansion or leaderboard submission.
 
+## Fresh alltools vanilla runs
+
+The newly authorized baseline consists of two separately saved, single-trial
+experiments. Both use the canonical τ-bench agent instruction byte-for-byte,
+the authoritative unmodified `alltools` policy and toolkit, GPT-5.4/high through
+personal ChatGPT authentication, GPT-5.2/low for the simulator, 200 steps, seed
+300, and concurrency 16:
+
+```bash
+uv run codex-tau preflight experiments/vanilla-train-alltools.toml
+uv run codex-tau run experiments/vanilla-train-alltools.toml
+
+uv run codex-tau preflight experiments/vanilla-test-alltools.toml
+uv run codex-tau run experiments/vanilla-test-alltools.toml
+```
+
+The train arm contains the frozen 48 train IDs. The test arm contains the
+frozen 49 test IDs and suppresses per-task console feedback. Their distinct
+experiment names guarantee distinct `runs/` locations. These are fresh
+alltools baselines; neither is reference-comparable or leaderboard-valid.
+
+## One-shot train-trace prompt pass
+
+Only after `vanilla-train-alltools` finishes may its 48 saved trajectories be
+read for prompt work. The method is a single generalizing reflection pass,
+inspired by research such as GEPA but not an execution of GEPA: there is no
+iterative search, candidate loop, or validation-guided selection. Inspect the
+fresh train traces once, make one task-level `AGENT_INSTRUCTION` revision, write
+the fixed artifact, record its SHA-256 in a separately named
+`optimized-test-alltools` config, freeze both, and run the 49-task test once.
+
+Do not inspect the vanilla or optimized test trajectories for prompt feedback.
+The optimized artifact and config are intentionally not present in this phase;
+the harness rejects an optimized run until both exist at the fixed path and
+their hashes match.
+
 ## Frozen test run
 
 The standard τ-bench prompt can be evaluated once on the frozen test partition
@@ -241,3 +288,10 @@ full-domain leaderboard score. Neither is leaderboard-valid, and neither may be
 submitted. The standing non-submission rule in
 [BENCHMARK_POLICY.md](BENCHMARK_POLICY.md) applies to every run. This repository
 intentionally contains no submission path.
+
+Every completed trajectory audit must independently match the effective prompt
+hash and instruction hash, personal ChatGPT account, GPT-5.4/high catalog and
+thread model, no reroute, no instruction sources, explicit empty developer
+instructions, no Codex-native capability event, and exact accepted-versus-
+returned dynamic-tool counts with zero pending results. Manifest generation
+fails if any trajectory misses one of these checks.

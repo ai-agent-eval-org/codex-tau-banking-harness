@@ -252,6 +252,7 @@ class CodexAppServer:
             "base_instructions_sha256": hashlib.sha256(
                 system_prompt.encode()
             ).hexdigest(),
+            "developer_instructions_empty": True,
             "dynamic_call_count": 0,
             "dynamic_call_names": [],
             "last_protocol_method": None,
@@ -396,12 +397,27 @@ class CodexAppServer:
         self, message: ToolMessage | MultiToolMessage
     ) -> tuple[str | list[ToolCall], bool]:
         responses = self.broker.resolve(message)
-        self.audit["tool_results_returned"] += len(responses)
         self._checkpoint("item/tool/call:responding")
         for request_id, result in responses:
             self.transport.respond(request_id, result)
+            self.audit["tool_results_returned"] += 1
         self._checkpoint("item/tool/call:responded")
         return self._wait_for_output()
+
+    def require_complete_tool_delivery(self) -> None:
+        """Fail unless every accepted dynamic call received its tau2 result."""
+        pending = self.broker.pending_count
+        accepted = int(self.audit["dynamic_call_count"])
+        returned = int(self.audit["tool_results_returned"])
+        complete = pending == 0 and accepted == returned
+        self.audit["pending_dynamic_call_count"] = pending
+        self.audit["tool_result_delivery_complete"] = complete
+        self._checkpoint("tool_delivery:verified" if complete else "tool_delivery:failed")
+        if not complete:
+            raise ProtocolError(
+                "incomplete dynamic-tool result delivery: "
+                f"accepted={accepted}, returned={returned}, pending={pending}"
+            )
 
     def _wait_for_output(
         self, timeout: float = TURN_OUTPUT_TIMEOUT_SECONDS

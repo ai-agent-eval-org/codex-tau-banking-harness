@@ -21,12 +21,24 @@ In particular:
   explicitly authorized after a credential and size review.
 
 The repository intentionally provides `preflight` and bounded local `run`
-commands only. It provides no leaderboard submission command. Authorized
-experiment files are restricted to the two-task smoke set, the explicit
-two-task/four-trial alltools concurrency validation, the explicit
-five-task/four-trial alltools pilot, or the exact frozen 49-task single-trial
-test partition in `AGENTS.md`. The alltools pilot may use at most eight workers
-and must follow a clean concurrency-two validation. The test run is local-only;
-test trajectories must not feed prompt optimization. Any future expansion must
-use explicit task IDs, trial counts, and concurrency; preserve the
-personal-ChatGPT/Platform billing boundary; and remain local by default.
+commands only. It provides no leaderboard submission command. The exact legacy
+allowlist remains the two-task smoke set, the two-task/four-trial alltools
+validation, the five-task/four-trial alltools pilots at concurrency eight and
+16, and the frozen 49-task terminal-use reference test.
+
+Fresh authorization adds three exact, local-only `alltools` matrices:
+
+1. `vanilla-train-alltools`: the frozen 48 train IDs, one trial, concurrency 16;
+2. `vanilla-test-alltools`: the frozen 49 test IDs, one trial, concurrency 16;
+3. `optimized-test-alltools`: those same 49 test IDs, one trial, concurrency 16,
+   only after its one-shot prompt has been authored exclusively from the fresh
+   vanilla train traces and frozen by repo-relative path and SHA-256.
+
+The third experiment and its prompt artifact deliberately do not exist yet.
+They must not be authored until the first matrix has produced the authorized
+train traces. In all cases, test trajectories must not feed prompt optimization,
+and test output remains aggregate-only during development. The
+authorization does not cover extra trials, other task IDs, concurrency above
+16, one combined 97-task run, or any submission. Any future expansion must
+preserve the personal-ChatGPT/Platform billing boundary and remain local by
+default.

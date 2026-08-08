@@ -24,7 +24,13 @@ from tau2.data_model.tasks import Task
 from tau2.environment.tool import Tool
 
 from .app_server import CodexAppServer
-from .prompt import standard_system_prompt
+from .prompt import (
+    OPTIMIZED_PROMPT_MODE,
+    STANDARD_PROMPT_MODE,
+    PromptSpec,
+    optimized_prompt_spec,
+    standard_prompt_spec,
+)
 
 
 class CodexAgentState(BaseModel):
@@ -49,6 +55,7 @@ class CodexTauAgent(HalfDuplexAgent[CodexAgentState]):
         repo_root: Path,
         task_id: str,
         audit_path: Path,
+        prompt_spec: PromptSpec,
         runtime_factory: type[CodexAppServer] = CodexAppServer,
     ):
         super().__init__(tools=tools, domain_policy=domain_policy)
@@ -57,10 +64,22 @@ class CodexTauAgent(HalfDuplexAgent[CodexAgentState]):
         self.runtime = runtime_factory(
             repo_root=repo_root,
             tools=tools,
-            system_prompt=standard_system_prompt(domain_policy),
+            system_prompt=prompt_spec.system_prompt,
             audit_sink=self._write_audit,
         )
-        self.runtime.audit["task_id"] = task_id
+        self.runtime.audit.update(
+            {
+                "agent_instruction_sha256": (
+                    prompt_spec.agent_instruction_sha256
+                ),
+                "effective_system_prompt_sha256": (
+                    prompt_spec.effective_system_prompt_sha256
+                ),
+                "prompt_mode": prompt_spec.mode,
+                "prompt_source_path": prompt_spec.source_path,
+                "task_id": task_id,
+            }
+        )
         self._checkpoint("agent_initialized")
 
     def _write_audit(self, audit: dict[str, Any]) -> None:
@@ -137,6 +156,7 @@ class CodexTauAgent(HalfDuplexAgent[CodexAgentState]):
         state: CodexAgentState | None = None,
     ) -> None:
         try:
+            self.runtime.require_complete_tool_delivery()
             self._checkpoint("stopped")
         finally:
             self.runtime.close()
@@ -157,7 +177,36 @@ def create_codex_tau_agent(
     if task is None or llm_args is None:
         raise ValueError("Codex agent factory requires task and llm_args")
     repo_root = Path(str(llm_args["repo_root"])).resolve()
+    expected_repo_root = Path(__file__).resolve().parents[2]
+    if repo_root != expected_repo_root:
+        raise ValueError("Codex agent repo_root must be the harness repository")
     audit_dir = Path(str(llm_args["audit_dir"])).resolve()
+    prompt_mode = llm_args.get("prompt_mode")
+    if prompt_mode == STANDARD_PROMPT_MODE:
+        if set(llm_args) != {"repo_root", "audit_dir", "prompt_mode"}:
+            raise ValueError("the vanilla agent accepts only its fixed llm_args")
+        prompt_spec = standard_prompt_spec(domain_policy)
+    elif prompt_mode == OPTIMIZED_PROMPT_MODE:
+        if set(llm_args) != {
+            "repo_root",
+            "audit_dir",
+            "prompt_mode",
+            "agent_instruction_path",
+            "agent_instruction_sha256",
+        }:
+            raise ValueError("the optimized agent accepts only its fixed llm_args")
+        prompt_path = llm_args.get("agent_instruction_path")
+        prompt_sha256 = llm_args.get("agent_instruction_sha256")
+        if not isinstance(prompt_path, str) or not isinstance(prompt_sha256, str):
+            raise ValueError("the optimized prompt requires a path and SHA-256")
+        prompt_spec = optimized_prompt_spec(
+            repo_root=repo_root,
+            domain_policy=domain_policy,
+            relative_path=prompt_path,
+            expected_sha256=prompt_sha256,
+        )
+    else:
+        raise ValueError(f"unknown prompt mode: {prompt_mode!r}")
     pending_audit = audit_dir / f"{task.id}--pending-{uuid.uuid4().hex}.json"
     return CodexTauAgent(
         tools=tools,
@@ -165,4 +214,5 @@ def create_codex_tau_agent(
         repo_root=repo_root,
         task_id=task.id,
         audit_path=pending_audit,
+        prompt_spec=prompt_spec,
     )

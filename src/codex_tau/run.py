@@ -33,8 +33,12 @@ from .app_server import APP_SERVER_STREAM_READER_LIMIT_BYTES, CodexAppServer
 from .auth import CODEX_VERSION
 from .manifest import write_manifest
 from .prompt import (
-    STANDARD_AGENT_INSTRUCTION_SHA256,
-    standard_system_prompt,
+    OPTIMIZED_PROMPT_MODE,
+    STANDARD_PROMPT_MODE,
+    PromptError,
+    PromptSpec,
+    optimized_prompt_spec,
+    standard_prompt_spec,
 )
 from .task_split import (
     SPLIT_ALGORITHM,
@@ -52,6 +56,105 @@ SMOKE_TASK_IDS = ("task_001", "task_004")
 PILOT2_TASK_IDS = TEST_TASK_IDS[:2]
 PILOT5_TASK_IDS = TEST_TASK_IDS[:5]
 AGENT_NAME = "codex_tau_dynamic"
+VANILLA_TRAIN_EXPERIMENT = "vanilla-train-alltools"
+VANILLA_TEST_EXPERIMENT = "vanilla-test-alltools"
+OPTIMIZED_TEST_EXPERIMENT = "optimized-test-alltools"
+
+_BASE_EXPERIMENT_KEYS = {
+    "name",
+    "profile",
+    "domain",
+    "retrieval",
+    "agent_model",
+    "agent_reasoning",
+    "user_model",
+    "user_reasoning",
+    "seed",
+    "trials_per_task",
+    "max_steps",
+    "max_errors",
+    "task_partition",
+    "max_concurrency",
+    "task_ids",
+}
+
+
+def _authorized_experiments() -> dict[str, dict[str, Any]]:
+    """Return the complete exact execution allowlist."""
+    return {
+        "smoke-reference": {
+            "profile": "tau_reference_trial0",
+            "retrieval": "terminal_use",
+            "task_partition": "smoke",
+            "task_ids": SMOKE_TASK_IDS,
+            "trials_per_task": 1,
+            "max_concurrency": 1,
+            "prompt_mode": STANDARD_PROMPT_MODE,
+        },
+        "test-reference": {
+            "profile": "tau_reference_trial0",
+            "retrieval": "terminal_use",
+            "task_partition": "test",
+            "task_ids": TEST_TASK_IDS,
+            "trials_per_task": 1,
+            "max_concurrency": 1,
+            "prompt_mode": STANDARD_PROMPT_MODE,
+        },
+        "pilot2-alltools-concurrency2": {
+            "profile": "alltools_concurrency_validation_4trials",
+            "retrieval": "alltools",
+            "task_partition": "pilot2",
+            "task_ids": PILOT2_TASK_IDS,
+            "trials_per_task": 4,
+            "max_concurrency": 2,
+            "prompt_mode": STANDARD_PROMPT_MODE,
+        },
+        "pilot5-alltools": {
+            "profile": "alltools_pilot_4trials",
+            "retrieval": "alltools",
+            "task_partition": "pilot5",
+            "task_ids": PILOT5_TASK_IDS,
+            "trials_per_task": 4,
+            "max_concurrency": 8,
+            "prompt_mode": STANDARD_PROMPT_MODE,
+        },
+        "pilot5-alltools-concurrency16": {
+            "profile": "alltools_pilot_concurrency16_4trials",
+            "retrieval": "alltools",
+            "task_partition": "pilot5",
+            "task_ids": PILOT5_TASK_IDS,
+            "trials_per_task": 4,
+            "max_concurrency": 16,
+            "prompt_mode": STANDARD_PROMPT_MODE,
+        },
+        VANILLA_TRAIN_EXPERIMENT: {
+            "profile": "alltools_vanilla_trial0",
+            "retrieval": "alltools",
+            "task_partition": "train",
+            "task_ids": TRAIN_TASK_IDS,
+            "trials_per_task": 1,
+            "max_concurrency": 16,
+            "prompt_mode": STANDARD_PROMPT_MODE,
+        },
+        VANILLA_TEST_EXPERIMENT: {
+            "profile": "alltools_vanilla_trial0",
+            "retrieval": "alltools",
+            "task_partition": "test",
+            "task_ids": TEST_TASK_IDS,
+            "trials_per_task": 1,
+            "max_concurrency": 16,
+            "prompt_mode": STANDARD_PROMPT_MODE,
+        },
+        OPTIMIZED_TEST_EXPERIMENT: {
+            "profile": "alltools_optimized_trial0",
+            "retrieval": "alltools",
+            "task_partition": "test",
+            "task_ids": TEST_TASK_IDS,
+            "trials_per_task": 1,
+            "max_concurrency": 16,
+            "prompt_mode": OPTIMIZED_PROMPT_MODE,
+        },
+    }
 
 
 class ExperimentError(RuntimeError):
@@ -68,9 +171,9 @@ def _sha256_text(value: str) -> str:
 
 def _show_per_task_console(task_partition: str) -> bool:
     """Keep held-out task outcomes out of prompt-development feedback."""
-    if task_partition not in {"smoke", "pilot2", "pilot5", "test"}:
+    if task_partition not in {"smoke", "train", "pilot2", "pilot5", "test"}:
         raise ExperimentError(f"unknown task partition: {task_partition!r}")
-    return task_partition == "smoke"
+    return task_partition in {"smoke", "train"}
 
 
 def _repo_root() -> Path:
@@ -98,60 +201,53 @@ def load_experiment(path: Path) -> dict[str, Any]:
             raise ExperimentError(
                 f"{key} must remain {expected!r}, got {experiment.get(key)!r}"
             )
-    profiles = {
-        "tau_reference_trial0": "terminal_use",
-        "alltools_concurrency_validation_4trials": "alltools",
-        "alltools_pilot_4trials": "alltools",
-        "alltools_pilot_concurrency16_4trials": "alltools",
-    }
-    profile = experiment.get("profile")
-    expected_retrieval = profiles.get(profile)
-    if expected_retrieval is None:
-        raise ExperimentError(f"unknown experiment profile: {profile!r}")
-    if experiment.get("retrieval") != expected_retrieval:
-        raise ExperimentError(
-            f"retrieval must be {expected_retrieval!r} for {profile!r}"
-        )
-    partition = experiment.get("task_partition")
-    if partition == "smoke":
-        authorized_task_ids = SMOKE_TASK_IDS
-        expected_profiles = {"tau_reference_trial0": 1}
-        expected_trials = 1
-    elif partition == "pilot2":
-        authorized_task_ids = PILOT2_TASK_IDS
-        expected_profiles = {"alltools_concurrency_validation_4trials": 2}
-        expected_trials = 4
-    elif partition == "pilot5":
-        authorized_task_ids = PILOT5_TASK_IDS
-        expected_profiles = {
-            "alltools_pilot_4trials": 8,
-            "alltools_pilot_concurrency16_4trials": 16,
-        }
-        expected_trials = 4
-    elif partition == "test":
-        authorized_task_ids = TEST_TASK_IDS
-        expected_profiles = {"tau_reference_trial0": 1}
-        expected_trials = 1
-    else:
-        raise ExperimentError("task_partition must be smoke, pilot2, pilot5, or test")
-    if profile not in expected_profiles:
-        raise ExperimentError(
-            f"profile must be one of {sorted(expected_profiles)!r} for {partition!r}"
-        )
-    expected_concurrency = expected_profiles[profile]
-    if experiment.get("trials_per_task") != expected_trials:
-        raise ExperimentError(
-            f"trials_per_task must be {expected_trials} for {partition!r}"
-        )
+    name = experiment.get("name")
+    authorization = _authorized_experiments().get(name)
+    if authorization is None:
+        raise ExperimentError(f"unknown experiment name: {name!r}")
+    if path.name != f"{name}.toml":
+        raise ExperimentError("experiment filename must exactly match its name")
+    for key in (
+        "profile",
+        "retrieval",
+        "task_partition",
+        "trials_per_task",
+        "max_concurrency",
+    ):
+        expected = authorization[key]
+        if experiment.get(key) != expected:
+            raise ExperimentError(
+                f"{key} must be {expected!r} for experiment {name!r}"
+            )
+    authorized_task_ids = authorization["task_ids"]
     if experiment.get("task_ids") != list(authorized_task_ids):
-        raise ExperimentError(f"task_ids must equal the frozen {partition} task list")
-    if experiment.get("max_concurrency") != expected_concurrency:
-        raise ExperimentError(
-            f"max_concurrency must be {expected_concurrency} for {partition}"
-        )
-    forbidden = {"prompt_path", "custom_prompt", "developer_instructions"}
-    if forbidden & experiment.keys():
-        raise ExperimentError("the reference profile forbids custom prompt fields")
+        raise ExperimentError(f"task_ids must equal the frozen {name!r} task list")
+
+    prompt_mode = authorization["prompt_mode"]
+    if prompt_mode == STANDARD_PROMPT_MODE:
+        if set(experiment) != _BASE_EXPERIMENT_KEYS:
+            raise ExperimentError(
+                "vanilla experiments must contain only the fixed canonical fields"
+            )
+    else:
+        optimized_keys = _BASE_EXPERIMENT_KEYS | {
+            "agent_instruction_path",
+            "agent_instruction_sha256",
+        }
+        if set(experiment) != optimized_keys:
+            raise ExperimentError(
+                "the optimized test requires only a prompt path and SHA-256 "
+                "in addition to the fixed fields"
+            )
+        try:
+            optimized_prompt_spec(
+                repo_root=_repo_root(),
+                domain_policy="",
+                relative_path=experiment["agent_instruction_path"],
+                expected_sha256=experiment["agent_instruction_sha256"],
+            )
+        except (KeyError, TypeError, ValueError, PromptError) as exc:
+            raise ExperimentError("optimized prompt fields are malformed") from exc
     return experiment
 
 
@@ -177,6 +273,100 @@ def _retrieval_contract(retrieval: str) -> tuple[list[Any], str]:
     if retrieval == "alltools":
         return _alltools_contract()
     raise ExperimentError(f"unsupported retrieval profile: {retrieval!r}")
+
+
+def _prompt_spec_for(experiment: dict[str, Any], domain_policy: str) -> PromptSpec:
+    authorization = _authorized_experiments()[experiment["name"]]
+    if authorization["prompt_mode"] == STANDARD_PROMPT_MODE:
+        return standard_prompt_spec(domain_policy)
+    return optimized_prompt_spec(
+        repo_root=_repo_root(),
+        domain_policy=domain_policy,
+        relative_path=experiment["agent_instruction_path"],
+        expected_sha256=experiment["agent_instruction_sha256"],
+    )
+
+
+def _validate_runtime_audit(
+    audit: dict[str, Any],
+    prompt_spec: PromptSpec,
+    *,
+    require_tool_delivery: bool,
+) -> None:
+    """Verify every model, prompt, auth, and capability boundary in one audit."""
+    expected_hash = prompt_spec.effective_system_prompt_sha256
+    if audit.get("base_instructions_sha256") != expected_hash:
+        raise ExperimentError("effective app-server prompt hash mismatch")
+    observed_effective_hash = audit.get("effective_system_prompt_sha256")
+    if (
+        require_tool_delivery and observed_effective_hash != expected_hash
+    ) or (
+        not require_tool_delivery
+        and observed_effective_hash is not None
+        and observed_effective_hash != expected_hash
+    ):
+        raise ExperimentError("adapter effective prompt hash mismatch")
+    observed_instruction_hash = audit.get("agent_instruction_sha256")
+    if (
+        require_tool_delivery
+        and observed_instruction_hash != prompt_spec.agent_instruction_sha256
+    ) or (
+        not require_tool_delivery
+        and observed_instruction_hash is not None
+        and observed_instruction_hash != prompt_spec.agent_instruction_sha256
+    ):
+        raise ExperimentError("adapter agent-instruction hash mismatch")
+    observed_prompt_mode = audit.get("prompt_mode")
+    if (require_tool_delivery and observed_prompt_mode != prompt_spec.mode) or (
+        not require_tool_delivery
+        and observed_prompt_mode is not None
+        and observed_prompt_mode != prompt_spec.mode
+    ):
+        raise ExperimentError("adapter prompt mode mismatch")
+    if require_tool_delivery and audit.get("prompt_source_path") != (
+        prompt_spec.source_path
+    ):
+        raise ExperimentError("adapter prompt source path mismatch")
+    if audit.get("developer_instructions_empty") is not True:
+        raise ExperimentError("developer instructions were not explicitly empty")
+    if audit.get("instruction_sources") != []:
+        raise ExperimentError("Codex discovered an implicit instruction source")
+    if audit.get("observed_thread_model") != "gpt-5.4":
+        raise ExperimentError("Codex did not use the requested GPT-5.4 thread")
+    model = audit.get("model")
+    if not isinstance(model, dict) or (
+        model.get("requested") != "gpt-5.4"
+        or model.get("observed") != "gpt-5.4"
+        or model.get("hidden") is not False
+        or "high" not in model.get("reasoning_efforts", [])
+    ):
+        raise ExperimentError("GPT-5.4/high model-catalog audit failed")
+    account = audit.get("account")
+    if not isinstance(account, dict) or (
+        account.get("type") != "chatgpt"
+        or account.get("requires_openai_auth") is not True
+    ):
+        raise ExperimentError("personal ChatGPT authentication audit failed")
+    if audit.get("model_rerouted") is not False:
+        raise ExperimentError("Codex rerouted the evaluated model")
+    if audit.get("native_capability_denied") is not False:
+        raise ExperimentError("a denied Codex-native capability event was observed")
+    if audit.get("transport_stream_reader_limit_bytes") != (
+        APP_SERVER_STREAM_READER_LIMIT_BYTES
+    ):
+        raise ExperimentError("app-server stream-reader limit audit failed")
+    if not require_tool_delivery:
+        return
+    accepted = audit.get("dynamic_call_count")
+    returned = audit.get("tool_results_returned")
+    if (
+        audit.get("adapter_stage") != "stopped"
+        or audit.get("tool_result_delivery_complete") is not True
+        or audit.get("pending_dynamic_call_count") != 0
+        or type(accepted) is not int
+        or returned != accepted
+    ):
+        raise ExperimentError("adapter audit has incomplete dynamic-tool delivery")
 
 
 def _require_parent_prerequisites() -> dict[str, str]:
@@ -209,20 +399,21 @@ def preflight(
         raise ExperimentError("τ-bench returned a different frozen task ordering")
     tools, policy = _retrieval_contract(experiment["retrieval"])
     catalog = ToolCatalog(tools)
-    system_prompt = standard_system_prompt(policy)
+    prompt_spec = _prompt_spec_for(experiment, policy)
     runtime = CodexAppServer(
         repo_root=repo_root,
         tools=tools,
-        system_prompt=system_prompt,
+        system_prompt=prompt_spec.system_prompt,
     )
     try:
         runtime_audit = dict(runtime.audit)
     finally:
         runtime.close()
-    if runtime_audit.get("instruction_sources") != []:
-        raise ExperimentError("Codex discovered an implicit instruction source")
-    if runtime_audit.get("observed_thread_model") != "gpt-5.4":
-        raise ExperimentError("Codex did not start the requested GPT-5.4 thread")
+    _validate_runtime_audit(
+        runtime_audit,
+        prompt_spec,
+        require_tool_delivery=False,
+    )
     return {
         "status": "ready",
         "experiment": experiment["name"],
@@ -233,9 +424,11 @@ def preflight(
         "simulation_count": len(task_ids) * experiment["trials_per_task"],
         "max_concurrency": experiment["max_concurrency"],
         "local_split_sha256": split_sha256(),
-        "prompt_mode": "tau2_standard_llm_agent",
-        "agent_instruction_sha256": STANDARD_AGENT_INSTRUCTION_SHA256,
-        "system_prompt_sha256": _sha256_text(system_prompt),
+        "prompt_mode": prompt_spec.mode,
+        "custom_prompt": prompt_spec.mode == OPTIMIZED_PROMPT_MODE,
+        "prompt_source_path": prompt_spec.source_path,
+        "agent_instruction_sha256": prompt_spec.agent_instruction_sha256,
+        "system_prompt_sha256": prompt_spec.effective_system_prompt_sha256,
         "policy_sha256": _sha256_text(policy),
         "tool_names": list(catalog.names),
         "tool_schema_sha256": catalog.hash,
@@ -354,6 +547,20 @@ def run_experiment(experiment_path: Path) -> Path:
     if registry.get_agent_factory(AGENT_NAME) is None:
         registry.register_agent_factory(create_codex_tau_agent, AGENT_NAME)
     tasks = get_tasks("banking_knowledge", task_split_name=None, task_ids=task_ids)
+    llm_args_agent = {
+        "repo_root": str(repo_root),
+        "audit_dir": str(audit_dir),
+        "prompt_mode": check["prompt_mode"],
+    }
+    if check["prompt_mode"] == OPTIMIZED_PROMPT_MODE:
+        llm_args_agent.update(
+            {
+                "agent_instruction_path": experiment["agent_instruction_path"],
+                "agent_instruction_sha256": experiment[
+                    "agent_instruction_sha256"
+                ],
+            }
+        )
     config = TextRunConfig(
         domain="banking_knowledge",
         task_set_name="banking_knowledge",
@@ -361,10 +568,7 @@ def run_experiment(experiment_path: Path) -> Path:
         task_ids=list(task_ids),
         agent=AGENT_NAME,
         llm_agent="gpt-5.4",
-        llm_args_agent={
-            "repo_root": str(repo_root),
-            "audit_dir": str(audit_dir),
-        },
+        llm_args_agent=llm_args_agent,
         user="user_simulator",
         llm_user="gpt-5.2",
         llm_args_user={"reasoning_effort": "low"},
@@ -396,17 +600,17 @@ def run_experiment(experiment_path: Path) -> Path:
     dynamic_calls = sum(int(audit.get("dynamic_call_count", 0)) for audit in audits)
     if dynamic_calls < 1:
         raise ExperimentError("no real Codex dynamic-tool round trip was captured")
-    if any(audit.get("native_capability_denied") for audit in audits):
-        raise ExperimentError("a denied Codex-native capability event was observed")
-    if any(audit.get("model_rerouted") for audit in audits):
-        raise ExperimentError("Codex rerouted the evaluated model")
-    for audit in audits:
-        if audit.get("instruction_sources") != []:
-            raise ExperimentError("Codex discovered repository instructions")
-        if audit.get("account", {}).get("type") != "chatgpt":
-            raise ExperimentError("a simulation did not use ChatGPT authentication")
 
     policy = reloaded.info.environment_info.policy
+    prompt_spec = _prompt_spec_for(experiment, policy)
+    if prompt_spec.effective_system_prompt_sha256 != check["system_prompt_sha256"]:
+        raise ExperimentError("effective prompt changed after preflight")
+    for audit in audits:
+        _validate_runtime_audit(
+            audit,
+            prompt_spec,
+            require_tool_delivery=True,
+        )
     rewards = [
         float(simulation.reward_info.reward)
         for simulation in reloaded.simulations
@@ -449,11 +653,12 @@ def run_experiment(experiment_path: Path) -> Path:
             "denied_native_event_observed": False,
         },
         "prompt": {
-            "mode": "tau2_standard_llm_agent",
-            "custom_prompt": False,
-            "agent_instruction_sha256": STANDARD_AGENT_INSTRUCTION_SHA256,
-            "effective_system_prompt_sha256": _sha256_text(
-                standard_system_prompt(policy)
+            "mode": prompt_spec.mode,
+            "custom_prompt": prompt_spec.mode == OPTIMIZED_PROMPT_MODE,
+            "source_path": prompt_spec.source_path,
+            "agent_instruction_sha256": prompt_spec.agent_instruction_sha256,
+            "effective_system_prompt_sha256": (
+                prompt_spec.effective_system_prompt_sha256
             ),
             "additional_developer_instructions": False,
         },

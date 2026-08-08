@@ -11,8 +11,10 @@ from codex_tau.auth import resolve_codex_command, sanitized_child_environment
 from codex_tau.prompt import (
     STANDARD_AGENT_INSTRUCTION_SHA256,
     prompt_hash,
+    standard_prompt_spec,
     standard_system_prompt,
 )
+from codex_tau.run import _alltools_contract
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -30,10 +32,26 @@ def test_system_prompt_is_exactly_tau2_standard() -> None:
 
 
 def test_reference_profile_has_no_custom_prompt_artifact() -> None:
-    assert not list((REPO_ROOT / "prompts/banking_knowledge").glob("*.md"))
-    experiment = (REPO_ROOT / "experiments/smoke-reference.toml").read_text()
-    assert "prompt_path" not in experiment
-    assert "developer_instructions" not in experiment
+    for name in (
+        "smoke-reference",
+        "test-reference",
+        "vanilla-train-alltools",
+        "vanilla-test-alltools",
+    ):
+        experiment = (REPO_ROOT / f"experiments/{name}.toml").read_text()
+        assert "agent_instruction_path" not in experiment
+        assert "agent_instruction_sha256" not in experiment
+        assert "developer_instructions" not in experiment
+
+
+def test_alltools_vanilla_prompt_is_canonical_tau2_bytes() -> None:
+    _, policy = _alltools_contract()
+    spec = standard_prompt_spec(policy)
+    assert spec.system_prompt == SYSTEM_PROMPT.format(
+        agent_instruction=AGENT_INSTRUCTION,
+        domain_policy=policy,
+    )
+    assert spec.source_path is None
 
 
 def test_codex_adds_no_model_visible_context(tmp_path: Path) -> None:

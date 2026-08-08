@@ -47,7 +47,14 @@ task_102
 ## Experimental hygiene
 
 - Prompt optimization, human labeling, failure analysis, and trajectory review
-  may use train tasks only.
+  may use train tasks only. For the authorized one-shot prompt pass, the only
+  optimization evidence is the fresh `vanilla-train-alltools` run produced by
+  this harness. Do not use the earlier pilots or inspect any test trajectory.
+- The one-shot pass is methodologically inspired by prompt-reflection research,
+  including GEPA, but it is not GEPA: there is no iterative optimizer, candidate
+  search, selection loop, or evaluation-feedback cycle. Read the complete fresh
+  train traces once, make one general task-level revision, freeze it, and stop
+  optimizing before the optimized test run.
 - Freeze the prompt and harness before a test run. Test outcomes may be used
   only for an aggregate evaluation report, never as feedback for the next
   prompt. If test feedback influences development, disclose that the test set
@@ -68,12 +75,25 @@ task_102
   the GPT-5.2 simulator, but never for evaluated Codex inference. Never label
   either run reference-comparable.
 - A custom or optimized prompt is a separately named experiment and must never
-  be represented as reference-comparable. The reference profile has no custom
-  prompt artifact or additional developer instructions.
+  be represented as reference-comparable. The reference and vanilla profiles
+  have no custom prompt artifact or additional developer instructions. The only
+  authorized optimized form replaces `AGENT_INSTRUCTION` from the fixed,
+  repo-relative UTF-8 artifact path
+  `prompts/banking_knowledge/optimized-agent-instruction.md`, pinned by SHA-256,
+  while rendering the unmodified τ-bench `SYSTEM_PROMPT` with the authoritative
+  `alltools` policy. Additional developer instructions are forbidden.
 - Keep task IDs, trial counts, and concurrency explicit. The two authorized
-  four-trial alltools runs above are the only multi-trial exceptions. Do not run
-  all 97 tasks or expand beyond them without fresh authorization for that exact
-  local cost scope.
+  four-trial alltools runs above are the only multi-trial exceptions. Fresh
+  authorization also covers exactly one canonical `alltools` trial for all 48
+  frozen train IDs and, separately, all 49 frozen test IDs, each at concurrency
+  16. After the train traces exist and the one-shot prompt is frozen, it covers
+  one separately named optimized `alltools` test trial over the same 49 test IDs
+  at concurrency 16. It does not authorize extra trials, different tasks,
+  concurrency above 16, a combined 97-task run, or submission.
+- Do not create the optimized prompt artifact or optimized experiment config
+  before the fresh vanilla train run has completed. The prompt must be derived
+  only from those train traces, then its repo-relative path and SHA-256 must be
+  fixed before the optimized test starts.
 - Do not commit raw runs, credentials, embedding caches, or large artifacts.
 - `task_002` and `task_008` were exposed during infrastructure diagnosis on
   2026-08-08. Future held-out claims that include them must disclose that

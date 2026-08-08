@@ -49,3 +49,20 @@ source configuration cannot be reconstructed.
 The reference profile is therefore a controlled current-v1.0.1 comparison, not
 an exact reproduction of the March artifact. Any score comparison must retain
 that qualification.
+
+## Fresh alltools and optimized arms
+
+The `vanilla-train-alltools` and `vanilla-test-alltools` experiments preserve
+the canonical τ-bench agent instruction and `SYSTEM_PROMPT` rendering, but use
+the `alltools` retrieval policy and toolkit. They are internal baselines for the
+prompt study, not extensions of the terminal-use reference profile and not
+reference-comparable.
+
+The future `optimized-test-alltools` arm will differ again by replacing only
+the `AGENT_INSTRUCTION` substitution with one path-and-hash-pinned artifact
+derived in a single pass from fresh vanilla train traces. τ-bench's
+`SYSTEM_PROMPT`, authoritative alltools domain policy, tools, model, reasoning,
+simulator, task IDs, trial count, step limit, and concurrency remain fixed.
+There will be no additional developer instructions. Its score can be compared
+only with the fresh alltools vanilla test arm under this local methodology, not
+with the external terminal-use artifact.

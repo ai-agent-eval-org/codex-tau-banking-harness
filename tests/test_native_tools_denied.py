@@ -110,3 +110,19 @@ def test_stalled_turn_reports_last_protocol_boundary() -> None:
     assert snapshots[-1]["last_protocol_method"] == "turn/output:timed_out"
     assert snapshots[-1]["timeout_after_protocol_method"] == "turn/start:accepted"
     assert snapshots[-1]["app_server_stderr_line_count"] == 0
+
+
+def test_incomplete_dynamic_tool_delivery_fails_closed() -> None:
+    snapshots: list[dict] = []
+    runtime = CodexAppServer(
+        repo_root=Path("."),
+        tools=[],
+        system_prompt="prompt",
+        transport=FakeTransport([]),  # type: ignore[arg-type]
+        audit_sink=snapshots.append,
+    )
+    runtime.audit["dynamic_call_count"] = 1
+    with pytest.raises(ProtocolError, match="incomplete dynamic-tool"):
+        runtime.require_complete_tool_delivery()
+    assert snapshots[-1]["tool_result_delivery_complete"] is False
+    assert snapshots[-1]["pending_dynamic_call_count"] == 0

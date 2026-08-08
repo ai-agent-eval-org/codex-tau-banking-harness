@@ -7,9 +7,13 @@ from pathlib import Path
 from tau2.runner.helpers import get_tasks
 
 from codex_tau.run import (
+    OPTIMIZED_TEST_EXPERIMENT,
     PILOT2_TASK_IDS,
     PILOT5_TASK_IDS,
     SMOKE_TASK_IDS,
+    VANILLA_TEST_EXPERIMENT,
+    VANILLA_TRAIN_EXPERIMENT,
+    _authorized_experiments,
     _show_per_task_console,
     load_experiment,
 )
@@ -98,6 +102,48 @@ def test_alltools_concurrency_validation_is_exactly_bounded() -> None:
 
 def test_held_out_runs_suppress_task_level_console_feedback() -> None:
     assert _show_per_task_console("smoke") is True
+    assert _show_per_task_console("train") is True
     assert _show_per_task_console("pilot2") is False
     assert _show_per_task_console("pilot5") is False
     assert _show_per_task_console("test") is False
+
+
+def test_fresh_alltools_vanilla_matrices_are_exactly_frozen() -> None:
+    cases = (
+        (VANILLA_TRAIN_EXPERIMENT, "train", TRAIN_TASK_IDS),
+        (VANILLA_TEST_EXPERIMENT, "test", TEST_TASK_IDS),
+    )
+    for name, partition, task_ids in cases:
+        experiment = load_experiment(REPO_ROOT / f"experiments/{name}.toml")
+        assert experiment["name"] == name
+        assert experiment["profile"] == "alltools_vanilla_trial0"
+        assert experiment["task_partition"] == partition
+        assert tuple(experiment["task_ids"]) == task_ids
+        assert experiment["retrieval"] == "alltools"
+        assert experiment["agent_model"] == "gpt-5.4"
+        assert experiment["agent_reasoning"] == "high"
+        assert experiment["user_model"] == "gpt-5.2"
+        assert experiment["user_reasoning"] == "low"
+        assert experiment["trials_per_task"] == 1
+        assert experiment["max_steps"] == 200
+        assert experiment["max_concurrency"] == 16
+        assert "agent_instruction_path" not in experiment
+        assert "agent_instruction_sha256" not in experiment
+
+
+def test_future_optimized_test_is_allowlisted_but_not_authored() -> None:
+    authorization = _authorized_experiments()[OPTIMIZED_TEST_EXPERIMENT]
+    assert authorization == {
+        "profile": "alltools_optimized_trial0",
+        "retrieval": "alltools",
+        "task_partition": "test",
+        "task_ids": TEST_TASK_IDS,
+        "trials_per_task": 1,
+        "max_concurrency": 16,
+        "prompt_mode": "train_trace_one_shot_agent_instruction",
+    }
+    assert not (REPO_ROOT / f"experiments/{OPTIMIZED_TEST_EXPERIMENT}.toml").exists()
+    assert not (
+        REPO_ROOT
+        / "prompts/banking_knowledge/optimized-agent-instruction.md"
+    ).exists()
