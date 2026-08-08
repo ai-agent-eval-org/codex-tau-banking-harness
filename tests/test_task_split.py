@@ -6,7 +6,7 @@ from pathlib import Path
 
 from tau2.runner.helpers import get_tasks
 
-from codex_tau.run import SMOKE_TASK_IDS, load_experiment
+from codex_tau.run import SMOKE_TASK_IDS, _show_per_task_console, load_experiment
 from codex_tau.task_split import (
     SPLIT_SEED,
     TEST_TASK_IDS,
@@ -50,3 +50,8 @@ def test_test_experiment_is_exactly_bounded_to_frozen_test_ids() -> None:
     assert experiment["retrieval"] == "alltools"
     assert experiment["trials_per_task"] == 1
     assert experiment["max_concurrency"] == 4
+
+
+def test_held_out_runs_suppress_task_level_console_feedback() -> None:
+    assert _show_per_task_console("smoke") is True
+    assert _show_per_task_console("test") is False

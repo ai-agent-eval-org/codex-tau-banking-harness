@@ -52,6 +52,9 @@ task_102
   only for an aggregate evaluation report, never as feedback for the next
   prompt. If test feedback influences development, disclose that the test set
   is contaminated and define a new benchmark before making held-out claims.
+- Test runs must disable per-task console summaries. Inspect only aggregate
+  completion, infrastructure integrity, and final score; do not open test
+  trajectories or task-level rewards during prompt development.
 - Keep the evaluation configuration fixed at `alltools`, the official τ-bench
   dynamic-tool schemas, GPT-5.4/xhigh through personal ChatGPT authentication,
   and GPT-5.2/low for the official user simulator. The Platform API key may be

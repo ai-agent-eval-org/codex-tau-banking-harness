@@ -15,4 +15,5 @@ def test_non_submission_rule_is_prominent_and_durable() -> None:
     assert "request to run or compare tasks is not submission authorization" in readme
     assert "Never reshuffle" in agents
     assert "Prompt optimization, human labeling" in agents
+    assert "Test runs must disable per-task console summaries" in agents
     assert "test trajectories must not feed prompt optimization" in policy

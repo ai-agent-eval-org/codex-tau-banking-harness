@@ -164,7 +164,8 @@ uv run codex-tau run experiments/test-candidate.toml
 
 The experiment contains all 49 test IDs explicitly. Its manifest records the
 split algorithm, seed, counts, digest, exact task IDs, tool-schema digest, and
-Pass@1. Test trajectories must not be used for subsequent prompt optimization.
+Pass@1. Per-task console summaries are disabled for held-out runs. Test
+trajectories must not be used for subsequent prompt optimization.
 
 ## ExpertTrace prompt provenance
 

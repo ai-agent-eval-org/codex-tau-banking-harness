@@ -58,6 +58,13 @@ def _sha256_text(value: str) -> str:
     return hashlib.sha256(value.encode()).hexdigest()
 
 
+def _show_per_task_console(task_partition: str) -> bool:
+    """Keep held-out task outcomes out of prompt-development feedback."""
+    if task_partition not in {"smoke", "test"}:
+        raise ExperimentError(f"unknown task partition: {task_partition!r}")
+    return task_partition == "smoke"
+
+
 def _repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
@@ -294,7 +301,9 @@ def run_experiment(experiment_path: Path) -> Path:
         tasks,
         save_path=results_path,
         save_dir=output_dir,
-        console_display=True,
+        # Held-out task summaries are evaluation data and must not become prompt
+        # optimization feedback. Smoke runs retain their useful debug display.
+        console_display=_show_per_task_console(experiment["task_partition"]),
         results_format="json",
     )
     reloaded = Results.load(results_path)
