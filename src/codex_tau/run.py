@@ -34,6 +34,8 @@ from .auth import CODEX_VERSION
 from .manifest import write_manifest
 from .prompt import (
     OPTIMIZED_PROMPT_MODE,
+    OPTIMIZED_SYSTEM_PROMPT_FILE_SHA256,
+    OPTIMIZED_SYSTEM_PROMPT_PATH,
     STANDARD_PROMPT_MODE,
     PromptError,
     PromptSpec,
@@ -163,6 +165,8 @@ def _authorized_experiments() -> dict[str, dict[str, Any]]:
             "trials_per_task": 1,
             "max_concurrency": 16,
             "prompt_mode": OPTIMIZED_PROMPT_MODE,
+            "system_prompt_path": OPTIMIZED_SYSTEM_PROMPT_PATH.as_posix(),
+            "system_prompt_file_sha256": OPTIMIZED_SYSTEM_PROMPT_FILE_SHA256,
         },
     }
 
@@ -247,6 +251,12 @@ def load_experiment(path: Path) -> dict[str, Any]:
                 "the optimized test requires only a prompt path and SHA-256 "
                 "in addition to the fixed fields"
             )
+        for key in ("system_prompt_path", "system_prompt_file_sha256"):
+            expected = authorization[key]
+            if experiment.get(key) != expected:
+                raise ExperimentError(
+                    f"{key} must be {expected!r} for experiment {name!r}"
+                )
         try:
             optimized_prompt_spec(
                 repo_root=_repo_root(),

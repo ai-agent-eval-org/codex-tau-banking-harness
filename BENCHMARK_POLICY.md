@@ -17,8 +17,10 @@ In particular:
   authorized.
 - Do not run a complete domain or expand the configured task/trial set without
   fresh authorization for the exact local evaluation scope and expected cost.
-- Keep all local run artifacts ignored unless publication is separately and
-  explicitly authorized after a credential and size review.
+- Keep local run artifacts ignored unless publication is separately and
+  explicitly authorized after a credential and size review. The exact Option
+  A `results.json` already tracked on this branch is a narrow exception for
+  internal metric calculation, not leaderboard preparation or submission.
 
 The repository intentionally provides `preflight` and bounded local `run`
 commands only. It provides no leaderboard submission command. Its exact
@@ -37,10 +39,11 @@ matrices:
 The current `optimized-test-alltools` config pins a complete replacement system
 prompt authored only after the retained train run. Its train-only derivation,
 fixed path, and SHA-256 are recorded in `PROMPT_OPTIMIZATION.md`. The current
-optimized prompt has not been evaluated, and the config is not authorization to
-run it. Because the test partition was used by an earlier retired demo, any
-future optimized run on it is an adaptive retest, not a pristine held-out run.
-In every case, test trajectories must not feed prompt optimization.
+optimized prompt has not been evaluated. A fresh authorization in the active
+task covers exactly its frozen 49-task, one-trial run at concurrency 16; it does
+not cover any other matrix or retry. Because the test partition was used by
+the retained vanilla arm and earlier retired demos, the run is an adaptive
+retest, not a pristine held-out run. In every case, test trajectories must not feed prompt optimization.
 
 Prior execution authority is consumed and does not cover a rerun, extra trial,
 other task ID, concurrency above 16, or one combined 97-task run. Any future

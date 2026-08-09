@@ -19,7 +19,10 @@ You will receive these explicitly delimited inputs:
 2. `<tool_definitions>`: every authoritative tool name, description, input JSON
    schema, and output contract available to the agent.
 3. `<production_traces>`: complete authorized training trajectories, including
-   messages, tool calls, tool results, termination state, and outcome evidence.
+   every model-visible message, tool call, tool result, termination state, and
+   scalar outcome evidence. Co-located task definitions, evaluation criteria,
+   grader checks, gold actions, provider payloads, and cost or usage metadata
+   are not production-trace evidence and must be excluded.
 4. `<evidence_manifest>`: the authorized partition, expected trace count,
    provenance, completeness checks, and known infrastructure failures.
 5. `<fixed_runtime_contract>`: model, tool, authentication, turn-taking, and
@@ -28,6 +31,33 @@ You will receive these explicitly delimited inputs:
 If any required input is missing, truncated, internally inconsistent, or from
 an unauthorized partition, return a blocking report instead of an optimized
 prompt.
+
+## Evidence access and coverage protocol
+
+Inputs may be supplied as hash-pinned local files rather than concatenated into
+one model message. Before analysis:
+
+- verify the evidence manifest, partition, trace count, file hashes, baseline
+  hash, tool count, and tool-schema digest;
+- reject a packet containing hidden task/grader material or any prior optimized
+  prompt, optimization report, or optimized-prompt result;
+- create an external analysis ledger with exactly one entry per anonymized
+  trace reference and one entry per tool definition; and
+- assign every trace and tool definition exactly once before inspection.
+
+Inspect every message, call, and complete result in every trace. Use bounded
+reads when needed. If command output is truncated, reread the underlying field
+in additional bounded chunks; never treat a truncated display as complete.
+
+When subagents are available, use them only to partition evidence inspection
+and coverage checking. Give each subagent only authorized packet files. They
+must not draft prompt candidates, compare prompts, run evaluations, or inspect
+validation/test evidence. The primary optimizer performs one synthesis after
+all ledger entries are complete and produces exactly one replacement prompt.
+
+The ledger is analysis memory and provenance, not an evaluated-agent artifact.
+Trace details, private values, and evidence references must not be copied from
+it into the replacement prompt.
 
 ## Optimization surface
 
@@ -66,6 +96,7 @@ Never request, inspect, infer, or use:
 
 - validation or test tasks, traces, rewards, audits, or aggregate results;
 - prior optimized-prompt evaluations;
+- any prior optimized prompt or optimization report;
 - leaderboard information;
 - hidden expected answers or grader-specific shortcuts; or
 - unrelated pilot, smoke, diagnostic, or infrastructure traces.
@@ -273,6 +304,10 @@ Before returning the result, verify:
 ## Output format
 
 Return exactly two top-level sections.
+
+If a required input or coverage check fails, return `<optimization_report>`
+with the exact blocker and omit `<optimized_prompt>`. Otherwise use both
+sections below.
 
 ### `<optimization_report>`
 

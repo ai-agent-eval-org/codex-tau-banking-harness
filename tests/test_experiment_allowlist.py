@@ -72,7 +72,7 @@ def test_experiment_filename_must_match_fixed_name(tmp_path: Path) -> None:
         ),
         (
             'system_prompt_file_sha256 = '
-            '"e113c6ef7a8e0ee829089bd57c08d65bc9bc9c2fe76ad96e7f8c7c993d0c559e"',
+            '"4022d30ae66d704fdc1954202aafd94ef0140f3dea65a53b0f154b702ec47e4c"',
             'system_prompt_file_sha256 = '
             '"0000000000000000000000000000000000000000000000000000000000000000"',
         ),
@@ -84,5 +84,5 @@ def test_optimized_matrix_rejects_prompt_provenance_changes(
     changed = OPTIMIZED_SOURCE.read_text().replace(old, new, 1)
     path = tmp_path / OPTIMIZED_SOURCE.name
     path.write_text(changed)
-    with pytest.raises(ExperimentError, match="optimized prompt fields"):
+    with pytest.raises(ExperimentError, match="system_prompt"):
         load_experiment(path)

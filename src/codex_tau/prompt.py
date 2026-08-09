@@ -14,6 +14,9 @@ STANDARD_PROMPT_MODE = "tau2_canonical_system_prompt"
 OPTIMIZED_PROMPT_MODE = "train_trace_one_shot_full_system_prompt"
 BASELINE_SYSTEM_PROMPT_PATH = Path("prompts/banking_knowledge/baseline.md")
 OPTIMIZED_SYSTEM_PROMPT_PATH = Path("prompts/banking_knowledge/optimized.md")
+OPTIMIZED_SYSTEM_PROMPT_FILE_SHA256 = (
+    "4022d30ae66d704fdc1954202aafd94ef0140f3dea65a53b0f154b702ec47e4c"
+)
 BASELINE_SYSTEM_PROMPT_FILE_SHA256 = (
     "c51896d46edd67711f8288735462b104202d4b250609ced2e5c16ded52ba90c3"
 )

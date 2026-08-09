@@ -92,13 +92,17 @@ task_102
 - An optimized prompt artifact and experiment config may be authored only
   after the fresh vanilla train run has completed. The prompt must be derived
   only from those train traces, then its repo-relative path and SHA-256 must be
-  frozen before an evaluation. The current full prompt was evaluated once on
-  the 49-task test partition as the disclosed adaptive retest
-  `optimized-test-alltools-20260809T021853Z`; that execution authority is
-  consumed. Any future run on the already-used test partition is another
-  adaptive retest, not a pristine held-out evaluation, and requires fresh
-  authorization and disclosure.
+  frozen before an evaluation. The current Sol prompt was produced once from
+  a leakage-safe export of the 48 train traces and has not yet been evaluated.
+  The active authorization covers exactly one 49-task, one-trial adaptive
+  retest at concurrency 16. It covers no retry, additional trial, or changed
+  prompt. The result cannot be described as a pristine held-out evaluation.
 - Do not commit raw runs, credentials, embedding caches, or large artifacts.
+  The sole explicit exception is the already-published, credential-scanned
+  Option A test file at
+  `runs/vanilla-test-alltools-20260808T215353Z/results.json`, authorized for
+  internal τ2 metric calculation. It is not submission authorization. Do not
+  add its adapter audits or treat the exception as authority for another run.
 - The presence of `resume-interrupted` implementation is not authorization to
   execute it. An interrupted trajectory may be retried only after fresh,
   explicit human authorization for that exact source run and one retry, encoded

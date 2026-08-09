@@ -14,7 +14,7 @@ max_errors = 10
 task_partition = "test"
 max_concurrency = 16
 system_prompt_path = "prompts/banking_knowledge/optimized.md"
-system_prompt_file_sha256 = "e113c6ef7a8e0ee829089bd57c08d65bc9bc9c2fe76ad96e7f8c7c993d0c559e"
+system_prompt_file_sha256 = "4022d30ae66d704fdc1954202aafd94ef0140f3dea65a53b0f154b702ec47e4c"
 task_ids = [
   "task_002",
   "task_008",

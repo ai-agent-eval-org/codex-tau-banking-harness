@@ -222,6 +222,14 @@ frozen 49 test IDs and suppresses per-task console feedback. Their distinct
 experiment names guarantee distinct `runs/` locations. These are fresh
 alltools baselines; neither is reference-comparable or leaderboard-valid.
 
+The exact Option A test `results.json` is retained at
+[`runs/vanilla-test-alltools-20260808T215353Z/results.json`](runs/vanilla-test-alltools-20260808T215353Z/results.json)
+for internal τ2 metric calculation. It is a 20,786,997-byte τ2-loadable file
+with SHA-256
+`368511676b093a56041b3e9de7fdebed948abc7c4af6840df4691c0bf9916047`.
+It is not a leaderboard bundle, creates no submission authority, and excludes
+the local adapter-audit directory and authentication artifacts.
+
 ## One-shot train-trace prompt pass
 
 Only after `vanilla-train-alltools` finished were its 48 saved trajectories
@@ -242,24 +250,20 @@ uv run codex-tau preflight experiments/optimized-test-alltools.toml
 uv run codex-tau run experiments/optimized-test-alltools.toml
 ```
 
-The current full prompt was evaluated once as the explicitly authorized
-adaptive retest `optimized-test-alltools-20260809T021853Z`. It scored **23/49
-(46.9388%)**, compared with the vanilla test run's **15/49 (30.6122%)**: eight
-additional passes and an observed increase of 16.3265 percentage points. The
-run completed in 20m22.119s at concurrency 16. All 49 trajectories ended with
-`user_stop`, there were no infrastructure errors, and all 1,970 accepted
-dynamic-tool calls had their 1,970 results returned. Every adapter audit
-verified ChatGPT authentication, GPT-5.4/high, the frozen prompt hashes, no
-model rerouting, no instruction-source injection, no Codex-native capability
-use, and complete tool-result delivery.
+The current prompt was synthesized once by GPT-5.6-Sol from a leakage-safe
+packet containing only the 48 completed train trajectories, canonical
+baseline, and all 17 authoritative tool contracts. The exact optimizer
+instruction, packet exporter, evidence hashes, frozen prompt hashes, and
+one-shot boundary are documented in
+[PROMPT_OPTIMIZATION.md](PROMPT_OPTIMIZATION.md). The previous optimized run
+was deleted as a superseded demo artifact and is not evidence for this prompt.
 
-This is reused-holdout evidence, not a pristine held-out result: the same test
-partition had been used by the retired instruction-only demo. Only aggregate
-score, completion, and integrity fields were inspected; no test trajectory,
-per-task reward, or individual audit content was opened for prompt feedback.
-The run's execution authority is consumed, its artifacts remain ignored and
-local, and the result authorizes no publication or submission. See
-[PROMPT_OPTIMIZATION.md](PROMPT_OPTIMIZATION.md).
+The current prompt has not yet been evaluated. Its authorized 49-task,
+one-trial, concurrency-16 run must be labeled an adaptive retest because the
+same partition was used by the retained vanilla evaluation and retired demos.
+Only aggregate score, completion, and integrity fields may be inspected; test
+trajectories and per-task outcomes must never become prompt feedback. The run
+authorizes no publication or submission.
 
 ### Consumed interrupted-run recovery
 

@@ -61,16 +61,15 @@ reference profile and not reference-comparable.
 
 The current optimized artifact is a path-and-hash-pinned replacement for the
 complete textual alltools system prompt, including both `<instructions>` and
-`<policy>`. It was derived in one pass from the 48 retained train traces. The
-structured alltools schemas, model, reasoning, simulator, task matrix, step
-limit, authentication boundary, and empty developer instructions remain
-fixed.
+`<policy>`. GPT-5.6-Sol synthesized it once from a leakage-safe packet of the
+48 retained train traces and all 17 authoritative tool contracts. The
+structured alltools schemas, evaluated model, reasoning, simulator, task
+matrix, step limit, authentication boundary, and empty developer instructions
+remain fixed.
 
-The current full optimized prompt was evaluated once on the same 49-task test
-partition as the adaptive retest `optimized-test-alltools-20260809T021853Z`.
-It scored 23/49 (46.9388%), versus 15/49 (30.6122%) for the vanilla alltools
-test arm. Because the partition was previously used for the retired demo, this
-is reused-holdout evidence rather than a pristine held-out result. It is also
-not comparable with the external terminal-use artifact. The previously
-disclosed exposure of `task_002` and `task_008` remains an additional
-contamination caveat.
+The current Sol prompt has not yet been evaluated. Any run on the frozen
+49-task test partition is reused-holdout evidence rather than a pristine
+held-out result because the partition was used by the retained vanilla arm and
+retired demos. It is not comparable with the external terminal-use artifact.
+The previously disclosed exposure of `task_002` and `task_008` remains an
+additional contamination caveat.
