@@ -61,6 +61,10 @@ or values. Optimizer reports and candidates remain under the ignored local
 caches, cookies, OAuth tokens, Platform keys, train traces, or optimizer
 artifacts to an issue or pull request.
 
+The exact evaluation `results.json` exceptions named in `README.md` may be
+tracked only after explicit authorization plus JSON validity, credential, and
+size review. Their adapter audits and authentication artifacts remain local.
+
 If a credential is ever written to a run artifact, stop the run, revoke and
 rotate the credential at its provider, remove the artifact from disk and any
 Git history or remote storage, and only then resume with a clean output

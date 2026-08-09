@@ -322,11 +322,14 @@ pinned τ-bench v1.0.1 data.
 Local evaluation output is written below `runs/<experiment>-<timestamp>/` and includes
 τ-bench's incrementally checkpointed `results.json`, one per-trajectory adapter
 audit keyed by task and simulation seed, and `manifest.json`. Local runs are
-ignored except for the explicitly authorized, credential-scanned Option A and
-Option B `results.json` files already tracked on this branch. Their adapter
-audits and authentication artifacts remain local. Optimizer candidates under
-`optimizer-runs/` are also ignored. Auth state, raw databases, embedding
-caches, and credentials are never copied or committed.
+ignored except for the explicitly authorized, credential-scanned Option A,
+Option B, and incomplete Luna `results.json` files tracked on this branch. The
+Luna checkpoint is retained at
+[`runs/optimized-test-alltools-20260809T155235Z/results.json`](runs/optimized-test-alltools-20260809T155235Z/results.json);
+it is 17,772,033 bytes and has the SHA-256 recorded above. Their adapter audits
+and authentication artifacts remain local. Optimizer candidates under
+`optimizer-runs/` are also ignored. Auth state, raw databases, embedding caches,
+and credentials are never copied or committed.
 
 The frozen test-partition results are local, single-trial estimates, not
 official full-domain leaderboard scores. They are not leaderboard-valid and

@@ -19,9 +19,10 @@ In particular:
   fresh authorization for the exact local evaluation scope and expected cost.
 - Keep local run artifacts ignored unless publication is separately and
   explicitly authorized after a credential and size review. The exact Option
-  A and Option B `results.json` files already tracked on this branch are narrow
-  exceptions for internal metric calculation, not leaderboard preparation or
-  submission.
+  A, Option B, and incomplete Luna `results.json` files tracked on this branch
+  are narrow, explicitly authorized exceptions for internal metric
+  calculation, not leaderboard preparation or submission. Their adapter audits
+  remain local.
 
 The repository provides `preflight`, bounded local `run`, one-shot
 `resume-interrupted`, and one-shot train-only `optimize` commands. It provides

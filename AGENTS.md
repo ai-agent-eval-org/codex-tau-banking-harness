@@ -115,11 +115,13 @@ task_102
   retry. Every result is an adaptive retest, not a pristine held-out
   evaluation.
 - Do not commit raw runs, credentials, embedding caches, or large artifacts.
-  The narrow existing exceptions are the credential-scanned Option A and
-  Option B test `results.json` files already tracked under `runs/`, authorized
-  for internal τ2 metric calculation. They are not submission authorization.
-  Do not add their adapter audits, commit standalone optimizer candidates, or
-  treat either exception as authority for another run.
+  The narrow tracked exceptions are the credential-scanned Option A and Option
+  B test `results.json` files and the explicitly authorized, credential-scanned
+  Luna checkpoint
+  `runs/optimized-test-alltools-20260809T155235Z/results.json`, retained for
+  internal metric calculation. They are not submission authorization. Do not
+  add their adapter audits, commit standalone optimizer candidates, or treat
+  any exception as authority for another run.
 - The presence of `resume-interrupted` implementation is not authorization to
   execute it. An interrupted trajectory may be retried only after fresh,
   explicit human authorization for that exact source run and one retry, encoded
