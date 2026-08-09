@@ -103,14 +103,17 @@ task_102
   after the fresh vanilla train run has completed. The prompt must be derived
   only from those train traces, then its repo-relative path and SHA-256 must be
   frozen before an evaluation. The current Luna prompt was produced once from
-  the hash-pinned export of the 48 train traces and promoted byte-for-byte; it
-  has no test score yet. The previously active Sol prompt's finalized adaptive
-  retest, `optimized-test-alltools-20260809T033050Z--recovery-bb161af26fd2`,
-  scored 19/49 after one separately authorized missing-only infrastructure
-  retry. That historical result does not score the current Luna prompt. Both
-  historical evaluation authorizations are consumed; no active recovery
-  record is present. Any future test is an adaptive retest, not a pristine
-  held-out evaluation.
+  the hash-pinned export of the 48 train traces and promoted byte-for-byte. Its
+  authorized adaptive retest, `optimized-test-alltools-20260809T155235Z`,
+  completed all 49 simulation attempts but did not finalize: 46 rows were
+  graded (18 pass, 28 fail), while trial-zero tasks `task_027`, `task_037`, and
+  `task_041` ended in the same empty-assistant-message infrastructure error and
+  have no reward. Therefore the Luna prompt has no authoritative 49-task score;
+  18/46 (39.1304%) is provisional only. The original authorization is consumed
+  and no retry is authorized. The previously active Sol prompt's historical
+  adaptive retest scored 19/49 after one separately authorized missing-only
+  retry. Every result is an adaptive retest, not a pristine held-out
+  evaluation.
 - Do not commit raw runs, credentials, embedding caches, or large artifacts.
   The narrow existing exceptions are the credential-scanned Option A and
   Option B test `results.json` files already tracked under `runs/`, authorized

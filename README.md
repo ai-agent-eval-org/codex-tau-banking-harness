@@ -262,7 +262,21 @@ read and analyzed all 48 traces and 17 tools, reread its complete external
 ledger, and submitted one prompt. The harness retained that submission without
 content filtering, and the repository prompt is an exact byte match. Its
 generation provenance and fixed hashes are recorded in
-[PROMPT_OPTIMIZATION.md](PROMPT_OPTIMIZATION.md). It has not yet been evaluated.
+[PROMPT_OPTIMIZATION.md](PROMPT_OPTIMIZATION.md).
+
+Its authorized adaptive retest, `optimized-test-alltools-20260809T155235Z`,
+completed all 49 simulation attempts but stopped fail-closed before finalizing:
+46 rows were graded, with 18 passes and 28 failures, while `task_027`,
+`task_037`, and `task_041` ended in the same empty-assistant-message
+infrastructure error and have no reward. The provisional graded rate is
+**18/46 (39.1304%)**; counting the three missing rows as failures would be
+**18/49 (36.7347%)**, but neither is an authoritative completed score. All 49
+adapter audits verified the frozen Luna prompt, personal ChatGPT
+authentication, GPT-5.4/high, no rerouting or instruction injection, no native
+capability use, and complete delivery of all 1,605 accepted dynamic-tool
+results. The local checkpoint SHA-256 is
+`5057b1fbca629a0821f8a6e2b86153f68053a4a57ef4513bcf085412009cda14`.
+The run authorization is consumed; no retry is authorized.
 
 For historical comparison only, the previously active GPT-5.6-Sol prompt's
 final adaptive retest was
@@ -273,7 +287,7 @@ separately authorized missing-only retry that preserved the other 48 rows.
 That result does not score the current Luna prompt, and both historical
 evaluation authorizations are consumed.
 
-Any future completed result must be labeled an adaptive retest because the same
+Any completed result must be labeled an adaptive retest because the same
 partition was used by the retained vanilla evaluation and retired demos. Only
 aggregate score, completion, and integrity fields may be inspected; test
 trajectories and per-task outcomes must never become prompt feedback. The run

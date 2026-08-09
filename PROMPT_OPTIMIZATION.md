@@ -178,8 +178,23 @@ personal ChatGPT authentication, GPT-5.2/low for the official simulator,
 unmodified alltools toolkit and structured tool schemas, empty developer
 instructions, no Codex-native capabilities, reroute detection, complete
 dynamic-tool delivery audits, incremental checkpointing, final manifests, and
-a 64 MiB app-server stream-reader limit. The current Luna prompt has no test
-score yet.
+a 64 MiB app-server stream-reader limit.
+
+The authorized Luna adaptive retest,
+`optimized-test-alltools-20260809T155235Z`, completed all 49 simulation
+attempts but did not produce a final manifest or authoritative score. Forty-six
+rows were graded (18 pass, 28 fail); trial-zero tasks `task_027`, `task_037`,
+and `task_041` ended in the same empty-assistant-message infrastructure error
+and have no reward. Thus **18/46 (39.1304%)** is only the provisional graded
+rate, while treating missing rows as failures gives **18/49 (36.7347%)** only
+as a conservative bound. All 49 adapter audits verified the frozen prompt,
+personal ChatGPT authentication, GPT-5.4/high, no reroute, empty instruction
+sources and developer instructions, no native capability event, and complete
+delivery of all 1,605 dynamic-tool results. The checkpoint `results.json`
+SHA-256 is
+`5057b1fbca629a0821f8a6e2b86153f68053a4a57ef4513bcf085412009cda14`.
+The original run authorization is consumed and no missing-only retry is
+authorized.
 
 For historical comparison only, the previously active Sol prompt's adaptive
 retest finalized as
@@ -194,7 +209,7 @@ and its manifest SHA-256 is
 That result does not score the Luna prompt, and its execution and retry
 authorizations are consumed.
 
-Any future result is an **adaptive retest**, not a pristine held-out
+Any result is an **adaptive retest**, not a pristine held-out
 evaluation, because the 49-task partition was previously used by the retained
 vanilla evaluation and retired demo runs. The earlier infrastructure exposure
 of `task_002` and `task_008` remains an additional contamination caveat. Test

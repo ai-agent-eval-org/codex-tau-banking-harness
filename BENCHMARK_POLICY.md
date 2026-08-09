@@ -40,8 +40,11 @@ matrices:
 The current `optimized-test-alltools` config pins a complete replacement system
 prompt authored only after the retained train run. Its train-only derivation,
 fixed path, and SHA-256 are recorded in `PROMPT_OPTIMIZATION.md`. The current
-Luna prompt has not been evaluated. For history only, the previously active
-Sol prompt's optimized adaptive retest finalized as
+Luna prompt's authorized adaptive retest completed 46 graded rows (18 pass, 28
+fail), but three rows have no reward after empty-assistant-message
+infrastructure failures. It has no authoritative 49-task score, and the
+original run authorization is consumed. No retry is authorized. For history
+only, the previously active Sol prompt's optimized adaptive retest finalized as
 `optimized-test-alltools-20260809T033050Z--recovery-bb161af26fd2` after one
 separately authorized missing-only infrastructure retry. It scored 19/49. The
 manifest preserves the retry provenance and proves the other 48 rows were not

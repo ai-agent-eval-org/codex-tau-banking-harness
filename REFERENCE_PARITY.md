@@ -67,7 +67,10 @@ complete textual alltools system prompt, including both `<instructions>` and
 submission was retained byte-for-byte without content filtering. The
 structured alltools schemas, evaluated model, reasoning, simulator, task
 matrix, step limit, authentication boundary, and empty developer instructions
-remain fixed. This Luna prompt has no test score yet.
+remain fixed. Its adaptive retest completed 46 graded rows (18 pass, 28 fail),
+but three empty-assistant-message infrastructure rows have no reward. It
+therefore has no authoritative 49-task score; 18/46 (39.1304%) is provisional
+only, and no retry is currently authorized.
 
 For historical comparison only, the previously active Sol prompt's adaptive
 retest scored 19/49 (38.7755%), versus 15/49 (30.6122%) for the canonical
