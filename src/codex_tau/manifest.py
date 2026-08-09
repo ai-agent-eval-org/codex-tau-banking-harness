@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import json
+import os
 import re
+import tempfile
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -44,9 +46,20 @@ def write_manifest(path: Path, manifest: Mapping[str, Any]) -> None:
     """Validate then atomically replace the small JSON manifest."""
     assert_secret_free(manifest)
     path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(".json.tmp")
-    temporary.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
-    temporary.replace(path)
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=f".{path.name}-", suffix=".tmp", dir=path.parent
+    )
+    temporary = Path(temporary_name)
+    try:
+        with os.fdopen(descriptor, "w") as handle:
+            json.dump(manifest, handle, indent=2, sort_keys=True)
+            handle.write("\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        temporary.replace(path)
+    except Exception:
+        temporary.unlink(missing_ok=True)
+        raise
 
 
 def read_manifest(path: Path) -> dict[str, Any]:
@@ -55,4 +68,3 @@ def read_manifest(path: Path) -> dict[str, Any]:
         raise ManifestError("manifest root must be an object")
     assert_secret_free(value)
     return value
-

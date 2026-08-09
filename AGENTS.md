@@ -95,6 +95,13 @@ task_102
   only from those train traces, then its repo-relative path and SHA-256 must
   remain fixed before and after the optimized test.
 - Do not commit raw runs, credentials, embedding caches, or large artifacts.
+- The presence of `resume-interrupted` implementation is not authorization to
+  execute it. An interrupted trajectory may be retried only after fresh,
+  explicit human authorization for that exact source run and one retry, encoded
+  in the exact hash-pinned record documented under `authorizations/`, committed
+  with a clean harness. This repository intentionally contains no active retry
+  authorization record by default. Never infer, generate, or activate one from
+  the existence of a failed local run.
 - `task_002` and `task_008` were exposed during infrastructure diagnosis on
   2026-08-08. Future held-out claims that include them must disclose that
   contamination; do not use their diagnostics for prompt optimization.

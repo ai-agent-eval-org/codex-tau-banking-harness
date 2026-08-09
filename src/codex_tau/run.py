@@ -40,6 +40,17 @@ from .prompt import (
     optimized_prompt_spec,
     standard_prompt_spec,
 )
+from .recovery import (
+    RECOVERABLE_EXPERIMENT,
+    TAU_COMMIT,
+    ResumeError,
+    audit_set_sha256,
+    canonical_sha256,
+    canonical_simulations_sha256,
+    resume_interrupted,
+    sha256_path,
+    simulation_key,
+)
 from .task_split import (
     SPLIT_ALGORITHM,
     SPLIT_SEED,
@@ -51,14 +62,13 @@ from .task_split import (
 from .tool_bridge import ToolCatalog
 
 TAU_TAG = "v1.0.1"
-TAU_COMMIT = "fc0055dc4e0a316c3f83133267fbd6faaa770992"
 SMOKE_TASK_IDS = ("task_001", "task_004")
 PILOT2_TASK_IDS = TEST_TASK_IDS[:2]
 PILOT5_TASK_IDS = TEST_TASK_IDS[:5]
 AGENT_NAME = "codex_tau_dynamic"
 VANILLA_TRAIN_EXPERIMENT = "vanilla-train-alltools"
 VANILLA_TEST_EXPERIMENT = "vanilla-test-alltools"
-OPTIMIZED_TEST_EXPERIMENT = "optimized-test-alltools"
+OPTIMIZED_TEST_EXPERIMENT = RECOVERABLE_EXPERIMENT
 
 _BASE_EXPERIMENT_KEYS = {
     "name",
@@ -216,9 +226,7 @@ def load_experiment(path: Path) -> dict[str, Any]:
     ):
         expected = authorization[key]
         if experiment.get(key) != expected:
-            raise ExperimentError(
-                f"{key} must be {expected!r} for experiment {name!r}"
-            )
+            raise ExperimentError(f"{key} must be {expected!r} for experiment {name!r}")
     authorized_task_ids = authorization["task_ids"]
     if experiment.get("task_ids") != list(authorized_task_ids):
         raise ExperimentError(f"task_ids must equal the frozen {name!r} task list")
@@ -298,9 +306,7 @@ def _validate_runtime_audit(
     if audit.get("base_instructions_sha256") != expected_hash:
         raise ExperimentError("effective app-server prompt hash mismatch")
     observed_effective_hash = audit.get("effective_system_prompt_sha256")
-    if (
-        require_tool_delivery and observed_effective_hash != expected_hash
-    ) or (
+    if (require_tool_delivery and observed_effective_hash != expected_hash) or (
         not require_tool_delivery
         and observed_effective_hash is not None
         and observed_effective_hash != expected_hash
@@ -530,23 +536,14 @@ def _validate_results(
         raise ExperimentError("trials did not receive distinct seeds")
 
 
-def run_experiment(experiment_path: Path) -> Path:
-    started_at = _utc_now()
-    repo_root = _repo_root()
-    experiment = load_experiment(experiment_path)
-    task_ids = tuple(experiment["task_ids"])
-    trials_per_task = int(experiment["trials_per_task"])
-    check = preflight(experiment_path)
-
-    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
-    output_dir = repo_root / "runs" / f"{experiment['name']}-{stamp}"
-    output_dir.mkdir(parents=True, exist_ok=False)
-    audit_dir = output_dir / "adapter-audits"
-    results_path = output_dir / "results.json"
-
-    if registry.get_agent_factory(AGENT_NAME) is None:
-        registry.register_agent_factory(create_codex_tau_agent, AGENT_NAME)
-    tasks = get_tasks("banking_knowledge", task_split_name=None, task_ids=task_ids)
+def _build_run_config(
+    experiment: dict[str, Any],
+    check: dict[str, Any],
+    repo_root: Path,
+    audit_dir: Path,
+    *,
+    auto_resume: bool,
+) -> TextRunConfig:
     llm_args_agent = {
         "repo_root": str(repo_root),
         "audit_dir": str(audit_dir),
@@ -556,44 +553,48 @@ def run_experiment(experiment_path: Path) -> Path:
         llm_args_agent.update(
             {
                 "agent_instruction_path": experiment["agent_instruction_path"],
-                "agent_instruction_sha256": experiment[
-                    "agent_instruction_sha256"
-                ],
+                "agent_instruction_sha256": experiment["agent_instruction_sha256"],
             }
         )
-    config = TextRunConfig(
+    return TextRunConfig(
         domain="banking_knowledge",
         task_set_name="banking_knowledge",
         task_split_name=None,
-        task_ids=list(task_ids),
+        task_ids=list(experiment["task_ids"]),
         agent=AGENT_NAME,
         llm_agent="gpt-5.4",
         llm_args_agent=llm_args_agent,
         user="user_simulator",
         llm_user="gpt-5.2",
         llm_args_user={"reasoning_effort": "low"},
-        num_trials=trials_per_task,
+        num_trials=int(experiment["trials_per_task"]),
         max_steps=experiment["max_steps"],
         max_errors=experiment["max_errors"],
         max_concurrency=experiment["max_concurrency"],
         seed=experiment["seed"],
         max_retries=0,
         hallucination_retries=0,
-        auto_resume=False,
+        auto_resume=auto_resume,
         auto_review=False,
         verbose_logs=False,
         retrieval_config=experiment["retrieval"],
     )
-    run_tasks(
-        config,
-        tasks,
-        save_path=results_path,
-        save_dir=output_dir,
-        # Held-out task summaries are evaluation data and must not become prompt
-        # optimization feedback. Smoke runs retain their useful debug display.
-        console_display=_show_per_task_console(experiment["task_partition"]),
-        results_format="json",
-    )
+
+
+def _finalize_experiment(
+    experiment: dict[str, Any],
+    check: dict[str, Any],
+    output_dir: Path,
+    started_at: str,
+    *,
+    recovery: dict[str, Any] | None = None,
+) -> Path:
+    """Apply the common full result/audit gates and write the only manifest."""
+    repo_root = _repo_root()
+    task_ids = tuple(experiment["task_ids"])
+    trials_per_task = int(experiment["trials_per_task"])
+    audit_dir = output_dir / "adapter-audits"
+    results_path = output_dir / "results.json"
     reloaded = Results.load(results_path)
     _validate_results(reloaded, task_ids, trials_per_task)
     audits, audit_paths = _collect_audits(audit_dir, reloaded)
@@ -626,16 +627,117 @@ def run_experiment(experiment_path: Path) -> Path:
         for trial in range(trials_per_task)
     ]
     ended_at = _utc_now()
+    current_commit = _git_head(repo_root)
+    harness = {
+        "repository": "https://github.com/ai-agent-eval-org/codex-tau-banking-harness",
+        "commit": current_commit,
+    }
+    execution_recovery = None
+    if recovery is not None:
+        source_dir = recovery["source_dir"]
+        source_results = source_dir / "results.json"
+        source_audit_dir = source_dir / "adapter-audits"
+        if (
+            source_dir.is_symlink()
+            or os.path.lexists(source_dir / "manifest.json")
+            or source_audit_dir.is_symlink()
+        ):
+            raise ResumeError("source changed during recovery")
+        source_audit_entries = tuple(source_audit_dir.iterdir())
+        if (
+            sha256_path(source_results) != recovery["source_results_sha256"]
+            or audit_set_sha256(source_audit_entries)
+            != recovery["source_audit_set_sha256"]
+        ):
+            raise ResumeError("source changed during recovery")
+        if (
+            canonical_sha256(reloaded.info.model_dump(mode="json"))
+            != recovery["staged_info_sha256"]
+        ):
+            raise ResumeError("recovery changed the staged run information")
+        if (
+            canonical_sha256([task.model_dump(mode="json") for task in reloaded.tasks])
+            != recovery["source_tasks_sha256"]
+        ):
+            raise ResumeError("recovery changed the frozen task payloads")
+        completed = [
+            simulation
+            for simulation in reloaded.simulations
+            if simulation_key(simulation) in recovery["completed_keys"]
+        ]
+        if (
+            len(completed) != 48
+            or canonical_simulations_sha256(completed)
+            != recovery["source_completed_rows_sha256"]
+        ):
+            raise ResumeError("recovery changed an already completed trajectory")
+        retried_rows = [
+            simulation
+            for simulation in reloaded.simulations
+            if simulation_key(simulation) not in recovery["completed_keys"]
+        ]
+        if len(retried_rows) != 1:
+            raise ResumeError("recovery did not replace exactly one trajectory")
+        retried = retried_rows[0]
+        completed_audits = tuple(
+            path
+            for path in audit_paths
+            if path.name in recovery["successful_audit_names"]
+        )
+        if (
+            len(completed_audits) != 48
+            or audit_set_sha256(completed_audits)
+            != recovery["staged_audits_before_retry_sha256"]
+        ):
+            raise ResumeError("recovery changed a completed adapter audit")
+        harness.update(
+            {
+                "initial_commit": recovery["source_harness_commit"],
+                "resume_commit": current_commit,
+                "clean_worktrees_verified": True,
+            }
+        )
+        execution_recovery = {
+            "authorization_sha256": recovery["authorization_sha256"],
+            "source_run_basename": source_dir.name,
+            "source_results_sha256": recovery["source_results_sha256"],
+            "source_audit_set_sha256": recovery["source_audit_set_sha256"],
+            "source_info_sha256": recovery["source_info_sha256"],
+            "source_tasks_sha256": recovery["source_tasks_sha256"],
+            "source_completed_rows_sha256": recovery["source_completed_rows_sha256"],
+            "staged_results_before_retry_sha256": recovery[
+                "staged_results_before_retry_sha256"
+            ],
+            "staged_audits_before_retry_sha256": recovery[
+                "staged_audits_before_retry_sha256"
+            ],
+            "staged_info_sha256": recovery["staged_info_sha256"],
+            "final_results_sha256": sha256_path(results_path),
+            "final_audit_set_sha256": audit_set_sha256(tuple(audit_paths)),
+            "retry_key_sha256": recovery["retry_key_sha256"],
+            "permitted_retry_count": 1,
+            "retry_count": 1,
+            "exact_key_replacement": True,
+            "scientific_classification": "single missing-only infrastructure retry",
+            "independent_full_matrix_rerun": False,
+            "retry_selected_from_reward": False,
+            "source_immutable_verified": True,
+            "initial_start_time": recovery["initial_start_time"],
+            "resume_command_start_time": started_at,
+            "retry_claim_time": recovery["retry_started_at"],
+            "retry_receipt_finish_time": recovery["retry_finished_at"],
+            "retry_trajectory_start_time": retried.start_time,
+            "retry_trajectory_end_time": retried.end_time,
+            "finalization_time": ended_at,
+        }
+
     manifest = {
-        "format_version": 1,
+        "format_version": 2 if recovery is not None else 1,
         "experiment": {
             "name": experiment["name"],
             "profile": experiment["profile"],
         },
-        "harness": {
-            "repository": "https://github.com/ai-agent-eval-org/codex-tau-banking-harness",
-            "commit": _git_head(repo_root),
-        },
+        "harness": harness,
         "tau_bench": {"tag": TAU_TAG, "commit": TAU_COMMIT},
         "codex": {
             "version": CODEX_VERSION,
@@ -715,8 +817,46 @@ def run_experiment(experiment_path: Path) -> Path:
             "failed": sum(reward != 1.0 for reward in rewards),
         },
     }
+    if execution_recovery is not None:
+        manifest["execution"]["recovery"] = execution_recovery
     write_manifest(output_dir / "manifest.json", manifest)
     return output_dir
+
+
+def run_experiment(experiment_path: Path) -> Path:
+    started_at = _utc_now()
+    repo_root = _repo_root()
+    experiment = load_experiment(experiment_path)
+    task_ids = tuple(experiment["task_ids"])
+    check = preflight(experiment_path)
+
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    output_dir = repo_root / "runs" / f"{experiment['name']}-{stamp}"
+    output_dir.mkdir(parents=True, exist_ok=False)
+    audit_dir = output_dir / "adapter-audits"
+    results_path = output_dir / "results.json"
+
+    if registry.get_agent_factory(AGENT_NAME) is None:
+        registry.register_agent_factory(create_codex_tau_agent, AGENT_NAME)
+    tasks = get_tasks("banking_knowledge", task_split_name=None, task_ids=task_ids)
+    config = _build_run_config(
+        experiment,
+        check,
+        repo_root,
+        audit_dir,
+        auto_resume=False,
+    )
+    run_tasks(
+        config,
+        tasks,
+        save_path=results_path,
+        save_dir=output_dir,
+        # Held-out task summaries are evaluation data and must not become prompt
+        # optimization feedback. Smoke runs retain their useful debug display.
+        console_display=_show_per_task_console(experiment["task_partition"]),
+        results_format="json",
+    )
+    return _finalize_experiment(experiment, check, output_dir, started_at)
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -725,6 +865,9 @@ def _parser() -> argparse.ArgumentParser:
     for command in ("preflight", "run"):
         child = subparsers.add_parser(command)
         child.add_argument("experiment", type=Path)
+    resume = subparsers.add_parser("resume-interrupted")
+    resume.add_argument("experiment", type=Path)
+    resume.add_argument("source_run_dir", type=Path)
     return parser
 
 
@@ -733,9 +876,12 @@ def main(argv: list[str] | None = None) -> None:
     try:
         if arguments.command == "preflight":
             print(json.dumps(preflight(arguments.experiment), indent=2, sort_keys=True))
-        else:
+        elif arguments.command == "run":
             output = run_experiment(arguments.experiment)
             print(f"verified local evaluation artifacts: {output}")
+        else:
+            output = resume_interrupted(arguments.experiment, arguments.source_run_dir)
+            print(f"verified local recovery artifacts: {output}")
     except Exception as exc:
         print(f"codex-tau: {exc}", file=sys.stderr)
         raise SystemExit(1) from exc

@@ -17,3 +17,6 @@ def test_non_submission_rule_is_prominent_and_durable() -> None:
     assert "Prompt optimization, human labeling" in agents
     assert "Test runs must disable per-task console summaries" in agents
     assert "test trajectories must not feed prompt optimization" in policy
+    assert "implementation, not authorization" in policy
+    assert "No active retry authorization record" in policy
+    assert "intentionally contains no active retry" in agents

@@ -118,3 +118,36 @@ boundaries.
 The experiment remains local-only and aggregate-only. Test outcomes must not be
 used to revise this prompt, and neither results nor trajectories may be
 submitted or published without fresh explicit authorization.
+
+## Execution status
+
+The fresh vanilla train run
+`vanilla-train-alltools-20260808T212330Z` completed at harness commit
+`e289cf9`. It scored **23/48 (47.9167%)** in **14m03.159s**. All 48
+trajectories ended with `user_stop`, there were no infrastructure errors, and
+all 1,322 accepted dynamic-tool calls had their 1,322 results returned.
+
+The vanilla held-out run `vanilla-test-alltools-20260808T215353Z` completed at
+harness commit `57e184f`. It scored **15/49 (30.6122%)** in **17m18.564s**.
+All 49 trajectories ended with `user_stop`, there were no infrastructure
+errors, and all 1,726 accepted dynamic-tool calls had their 1,726 results
+returned. Only aggregate output and infrastructure integrity were inspected;
+no held-out task definition, task identity, trajectory, per-task reward, or
+individual adapter audit was opened.
+
+The optimized held-out attempt
+`optimized-test-alltools-20260808T221206Z` ran at harness commit `57e184f` for
+approximately **17m16s** and orchestrated all 49 configured trajectories.
+Exactly one trajectory ended in a Codex turn-output timeout after the hard
+600-second limit, with a 120-second idle limit, following an `item/started`
+event. The fail-closed harness therefore produced no manifest, valid optimized
+score, or valid vanilla-to-optimized delta. No held-out task identity,
+definition, trajectory, per-task reward, or individual adapter audit was
+opened, and the frozen prompt was not revised.
+
+Interrupted-run recovery remains dormant. Using it requires fresh, explicit
+authorization for this exact source run and one retry, encoded in the exact
+committed, hash-pinned authorization record required by the harness. No retry
+has been performed. Until a separately authorized recovery completes and the
+full run passes every audit and manifest gate, no optimized partial score is
+reported and no prompt-improvement claim is possible.

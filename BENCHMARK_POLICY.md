@@ -42,3 +42,17 @@ The authorization does not cover extra trials, other task IDs,
 concurrency above 16, one combined 97-task run, or any submission. Any future
 expansion must preserve the personal-ChatGPT/Platform billing boundary and
 remain local by default.
+
+## Interrupted-run recovery is dormant by default
+
+The harness includes a fail-closed `resume-interrupted` implementation so an
+already authorized matrix can be recovered without rerunning completed rows.
+This is implementation, not authorization. The command cannot do model work
+unless a fresh human authorization for one exact source run and exactly one
+retry has first been encoded in the hash-pinned record described in
+`authorizations/README.md`, committed, and left clean with the recovery code.
+
+No active retry authorization record is committed by default. The command must
+not infer authorization from a failed checkpoint, a request to inspect or
+summarize it, or the prior authorization for the original matrix. Recovery is
+local only and does not relax the standing submission prohibition.
