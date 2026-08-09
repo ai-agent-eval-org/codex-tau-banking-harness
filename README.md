@@ -39,22 +39,33 @@ returned to the official τ-bench orchestrator for execution. The tool named
 `shell` is therefore τ-bench's read-only `sandbox-runtime` tool, never Codex's
 native shell.
 
-The reference and vanilla arms import τ-bench's own `AGENT_INSTRUCTION` and
-`SYSTEM_PROMPT` and use that exact rendered string as the app-server base
-instructions. They supply an explicit empty developer-instruction string and
-have no custom prompt artifact. The reference profile uses τ-bench's
-`terminal_use` policy. The separately labeled alltools arms use τ-bench's
-unmodified `alltools` policy and toolkit, including its official BM25,
-dense-search, and shell tools.
+The reference and vanilla arms read
+[`prompts/banking_knowledge/baseline.md`](prompts/banking_knowledge/baseline.md)
+as their `AGENT_INSTRUCTION`. That file visibly mirrors τ-bench's canonical
+instruction; the loader removes its conventional final Markdown newline, then
+verifies fixed raw and normalized hashes. Parity tests prove the normalized
+bytes equal the pinned τ-bench constant. The loader renders that instruction
+through τ-bench's unmodified `SYSTEM_PROMPT` template and supplies an explicit
+empty developer-instruction string. There is no config-selectable baseline
+override. The reference profile uses τ-bench's `terminal_use` policy. The
+separately labeled alltools arms use τ-bench's unmodified `alltools` policy and
+toolkit, including its official BM25, dense-search, and shell tools.
 
-The optimized-test arm is fail-closed around one substitution only. It
-may load a nonempty UTF-8 replacement for `AGENT_INSTRUCTION` from exactly
-`prompts/banking_knowledge/optimized.md`, and its experiment
-must pin the artifact's SHA-256. The harness still renders τ-bench's unmodified
+The optimized-test arm is fail-closed around one substitution only. It reads
+[`prompts/banking_knowledge/optimized.md`](prompts/banking_knowledge/optimized.md)
+instead of `baseline.md` for `AGENT_INSTRUCTION`, and its experiment pins that
+artifact's SHA-256. The harness still renders τ-bench's unmodified
 `SYSTEM_PROMPT` with the authoritative runtime `alltools` domain policy. Custom
 policy text, alternate prompt paths, extra fields, and developer instructions
 are rejected. The train-only derivation and fixed hash are documented in
 [PROMPT_OPTIMIZATION.md](PROMPT_OPTIMIZATION.md).
+
+Compare the only model-visible instruction change directly:
+
+```bash
+diff -u prompts/banking_knowledge/baseline.md \
+  prompts/banking_knowledge/optimized.md
+```
 
 Codex runs from an empty temporary directory and a temporary `CODEX_HOME` that
 contains only the benchmark configuration and a link to the user's existing

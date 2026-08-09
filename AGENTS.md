@@ -71,9 +71,11 @@ task_102
   for evaluated Codex inference.
 - A custom or optimized prompt is a separately named experiment and must never
   be represented as reference-comparable. The reference and vanilla profiles
-  have no custom prompt artifact or additional developer instructions. The only
-  completed optimized form replaces `AGENT_INSTRUCTION` from the fixed,
-  repo-relative UTF-8 artifact path
+  load the fixed `prompts/banking_knowledge/baseline.md` mirror of τ-bench's
+  canonical `AGENT_INSTRUCTION`; its raw and normalized hashes are fixed and
+  parity-tested against the pinned submodule. They have no configurable prompt
+  override or additional developer instructions. The completed optimized form
+  replaces only `AGENT_INSTRUCTION` from the fixed, repo-relative UTF-8 path
   `prompts/banking_knowledge/optimized.md`, pinned by SHA-256,
   while rendering the unmodified τ-bench `SYSTEM_PROMPT` with the authoritative
   `alltools` policy. Additional developer instructions are forbidden.

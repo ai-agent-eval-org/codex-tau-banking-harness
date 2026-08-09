@@ -185,7 +185,10 @@ def create_codex_tau_agent(
     if prompt_mode == STANDARD_PROMPT_MODE:
         if set(llm_args) != {"repo_root", "audit_dir", "prompt_mode"}:
             raise ValueError("the vanilla agent accepts only its fixed llm_args")
-        prompt_spec = standard_prompt_spec(domain_policy)
+        prompt_spec = standard_prompt_spec(
+            repo_root=repo_root,
+            domain_policy=domain_policy,
+        )
     elif prompt_mode == OPTIMIZED_PROMPT_MODE:
         if set(llm_args) != {
             "repo_root",

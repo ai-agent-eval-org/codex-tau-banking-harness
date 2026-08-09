@@ -1,16 +1,22 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from pathlib import Path
 
 import pytest
 
 from codex_tau.app_server import APP_SERVER_STREAM_READER_LIMIT_BYTES
-from codex_tau.prompt import standard_prompt_spec
+from codex_tau.prompt import BASELINE_AGENT_INSTRUCTION_PATH, standard_prompt_spec
 from codex_tau.run import ExperimentError, _validate_runtime_audit
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 def valid_audit() -> tuple[dict, object]:
-    prompt_spec = standard_prompt_spec("policy")
+    prompt_spec = standard_prompt_spec(
+        repo_root=REPO_ROOT,
+        domain_policy="policy",
+    )
     audit = {
         "account": {
             "type": "chatgpt",
@@ -37,7 +43,7 @@ def valid_audit() -> tuple[dict, object]:
         "observed_thread_model": "gpt-5.4",
         "pending_dynamic_call_count": 0,
         "prompt_mode": prompt_spec.mode,
-        "prompt_source_path": None,
+        "prompt_source_path": BASELINE_AGENT_INSTRUCTION_PATH.as_posix(),
         "tool_result_delivery_complete": True,
         "tool_results_returned": 3,
         "transport_stream_reader_limit_bytes": (

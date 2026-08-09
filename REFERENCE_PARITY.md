@@ -19,7 +19,7 @@ source configuration cannot be reconstructed.
 | Retrieval | terminal_use | terminal_use |
 | Maximum steps | 200 | 200 |
 | Maximum consecutive errors | 10 | 10 |
-| Agent prompt | Standard τ-bench `LLMAgent` | Exact same constructor and bytes |
+| Agent prompt | Standard τ-bench `LLMAgent` | Visible `baseline.md` mirror; exact same constructor and bytes |
 | Extra Codex instructions | Not applicable | Explicitly disabled |
 | Codex-native tools | Not applicable | Omitted; only τ-bench dynamic tools |
 

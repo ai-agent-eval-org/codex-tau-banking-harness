@@ -110,8 +110,12 @@ boundaries.
 
 ## Frozen artifact and experiment
 
-- Prompt: `prompts/banking_knowledge/optimized.md`
-- SHA-256: `dddd25c976a631e2559c6afefc90582328ae0ca9bc78be07e565ea53e47717c9`
+- Baseline instruction: `prompts/banking_knowledge/baseline.md`
+- Baseline normalized SHA-256:
+  `e00faa515230c8648931f73ed25c9528418cccc522fe8936917f4c2a047bc5d2`
+- Optimized instruction: `prompts/banking_knowledge/optimized.md`
+- Optimized file SHA-256:
+  `dddd25c976a631e2559c6afefc90582328ae0ca9bc78be07e565ea53e47717c9`
 - Experiment: `experiments/optimized-test-alltools.toml`
 - Matrix: 49 frozen test tasks, one trial, seed 300, concurrency 16,
   `alltools`, GPT-5.4/high evaluated agent, GPT-5.2/low user simulator, and 200

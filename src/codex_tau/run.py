@@ -286,7 +286,10 @@ def _retrieval_contract(retrieval: str) -> tuple[list[Any], str]:
 def _prompt_spec_for(experiment: dict[str, Any], domain_policy: str) -> PromptSpec:
     authorization = _authorized_experiments()[experiment["name"]]
     if authorization["prompt_mode"] == STANDARD_PROMPT_MODE:
-        return standard_prompt_spec(domain_policy)
+        return standard_prompt_spec(
+            repo_root=_repo_root(),
+            domain_policy=domain_policy,
+        )
     return optimized_prompt_spec(
         repo_root=_repo_root(),
         domain_policy=domain_policy,
