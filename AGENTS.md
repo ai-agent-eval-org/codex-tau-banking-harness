@@ -67,15 +67,8 @@ task_102
   τ-bench `LLMAgent` system-prompt constructor, the official runtime tool
   schemas, GPT-5.4/high through personal ChatGPT authentication, 200 maximum
   steps, and GPT-5.2/low for the official user simulator. The Platform API key
-  may be used only by the simulator, never by Codex.
-- The completed `pilot2-alltools-concurrency2` validation used only `task_002`
-  and `task_008`, four trials each, at concurrency two. The completed
-  `pilot5-alltools` experiments used only their five explicit IDs, four trials
-  each, at concurrency eight and then 16. Their one-shot execution authority is
-  consumed; the retained configs are reproducibility records, not permission
-  to rerun them. They used the Platform key only for official OpenAI embeddings
-  and the GPT-5.2 simulator, never for evaluated Codex inference. Never label
-  these runs reference-comparable.
+  may be used only by the simulator and official `alltools` embeddings, never
+  for evaluated Codex inference.
 - A custom or optimized prompt is a separately named experiment and must never
   be represented as reference-comparable. The reference and vanilla profiles
   have no custom prompt artifact or additional developer instructions. The only
@@ -84,14 +77,13 @@ task_102
   `prompts/banking_knowledge/optimized.md`, pinned by SHA-256,
   while rendering the unmodified τ-bench `SYSTEM_PROMPT` with the authoritative
   `alltools` policy. Additional developer instructions are forbidden.
-- Keep task IDs, trial counts, and concurrency explicit. The completed
-  four-trial alltools runs above are the only multi-trial exceptions. A separate
-  one-shot authorization covered one canonical `alltools` trial for all 48
-  frozen train IDs, one for all 49 frozen test IDs, and one separately named
-  optimized test trial over those same 49 IDs, each at concurrency 16. All
-  three completed and their execution authority is consumed. Any rerun or new
-  matrix needs fresh authorization; no authorization permits a combined
-  97-task run, concurrency above 16, or leaderboard submission.
+- An experiment config or runtime allowlist entry is a reproducibility control,
+  not execution authority. Every model-bearing run requires fresh, explicit
+  human authorization for its exact task IDs, trials, concurrency, and expected
+  cost. Prior pilot, vanilla, optimized, and recovery execution authority is
+  consumed. Concurrency 16 is the validated maximum; do not increase it without
+  a separately authorized, bounded fixed-matrix scaling validation. Never run
+  one combined 97-task matrix or submit to a leaderboard.
 - The optimized prompt artifact and experiment config may be authored only
   after the fresh vanilla train run has completed. The prompt must be derived
   only from those train traces, then its repo-relative path and SHA-256 must
@@ -105,6 +97,6 @@ task_102
   successful missing-only retry and is terminal; it authorizes no additional
   attempt. Never infer, generate, or activate retry authority from the
   implementation, a consumed record, or the existence of a failed local run.
-- `task_002` and `task_008` were exposed during infrastructure diagnosis on
-  2026-08-08. Future held-out claims that include them must disclose that
-  contamination; do not use their diagnostics for prompt optimization.
+- Preserve the held-out contamination disclosure recorded in
+  `PILOT_STATUS.md` and `REFERENCE_PARITY.md` in every future claim. Never use
+  pilot or test diagnostics for prompt optimization.
