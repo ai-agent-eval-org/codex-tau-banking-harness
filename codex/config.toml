@@ -1,0 +1,58 @@
+forced_login_method = "chatgpt"
+web_search = "disabled"
+approval_policy = "never"
+sandbox_mode = "read-only"
+model = "gpt-5.4"
+model_reasoning_effort = "high"
+personality = "none"
+project_doc_max_bytes = 0
+project_doc_fallback_filenames = []
+include_permissions_instructions = false
+include_apps_instructions = false
+include_collaboration_mode_instructions = false
+include_environment_context = false
+
+[features]
+apps = false
+auth_elicitation = false
+browser_use = false
+browser_use_external = false
+browser_use_full_cdp_access = false
+code_mode = false
+code_mode_host = false
+computer_use = false
+default_mode_request_user_input = false
+goals = false
+guardian_approval = false
+hooks = false
+image_generation = false
+in_app_browser = false
+memories = false
+multi_agent = false
+plugins = false
+plugin_sharing = false
+remote_plugin = false
+request_permissions_tool = false
+shell_snapshot = false
+shell_tool = false
+standalone_web_search = false
+tool_suggest = false
+unified_exec = false
+workspace_dependencies = false
+
+[skills]
+include_instructions = false
+
+[skills.bundled]
+enabled = false
+
+[apps._default]
+enabled = false
+
+[tools.update_plan]
+enabled = false
+
+[tools.experimental_request_user_input]
+enabled = false
+
+[mcp_servers]

@@ -1,0 +1,65 @@
+[experiment]
+name = "vanilla-train-alltools"
+profile = "alltools_vanilla_trial0"
+domain = "banking_knowledge"
+retrieval = "alltools"
+agent_model = "gpt-5.4"
+agent_reasoning = "high"
+user_model = "gpt-5.2"
+user_reasoning = "low"
+seed = 300
+trials_per_task = 1
+max_steps = 200
+max_errors = 10
+task_partition = "train"
+max_concurrency = 16
+task_ids = [
+  "task_001",
+  "task_003",
+  "task_004",
+  "task_005",
+  "task_006",
+  "task_007",
+  "task_015",
+  "task_017",
+  "task_018",
+  "task_020",
+  "task_021",
+  "task_023",
+  "task_024",
+  "task_025",
+  "task_026",
+  "task_028",
+  "task_029",
+  "task_032",
+  "task_033",
+  "task_034",
+  "task_036",
+  "task_040",
+  "task_044",
+  "task_049",
+  "task_052",
+  "task_054",
+  "task_059",
+  "task_060",
+  "task_063",
+  "task_064",
+  "task_067",
+  "task_070",
+  "task_072",
+  "task_075",
+  "task_077",
+  "task_079",
+  "task_081",
+  "task_083",
+  "task_087",
+  "task_088",
+  "task_090",
+  "task_092",
+  "task_093",
+  "task_094",
+  "task_095",
+  "task_097",
+  "task_099",
+  "task_100",
+]
