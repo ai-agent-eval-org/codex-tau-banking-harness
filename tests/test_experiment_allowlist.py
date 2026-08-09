@@ -72,7 +72,7 @@ def test_experiment_filename_must_match_fixed_name(tmp_path: Path) -> None:
         ),
         (
             'system_prompt_file_sha256 = '
-            '"4022d30ae66d704fdc1954202aafd94ef0140f3dea65a53b0f154b702ec47e4c"',
+            '"91fe41860cca2655f664ba4f8a1a8251aa43d567ecee08bfd67f5ab03a0d8550"',
             'system_prompt_file_sha256 = '
             '"0000000000000000000000000000000000000000000000000000000000000000"',
         ),

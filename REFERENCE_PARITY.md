@@ -62,19 +62,20 @@ reference profile and not reference-comparable.
 
 The current optimized artifact is a path-and-hash-pinned replacement for the
 complete textual alltools system prompt, including both `<instructions>` and
-`<policy>`. GPT-5.6-Sol synthesized it once from a leakage-safe packet of the
-48 retained train traces and all 17 authoritative tool contracts. The
+`<policy>`. GPT-5.6-Luna/max synthesized it once from the fixed packet of the
+48 retained train traces and all 17 authoritative tool contracts. The sole
+submission was retained byte-for-byte without content filtering. The
 structured alltools schemas, evaluated model, reasoning, simulator, task
 matrix, step limit, authentication boundary, and empty developer instructions
-remain fixed.
+remain fixed. This Luna prompt has no test score yet.
 
-The final current-Sol adaptive retest scored 19/49 (38.7755%), versus 15/49
-(30.6122%) for the canonical alltools baseline. One original no-reward
-infrastructure row was replaced by a separately authorized, single
-missing-only retry; the final manifest proves the other 48 rows remained
-unchanged and that no independent full-matrix rerun occurred. This is
-reused-holdout evidence rather than a pristine held-out result because the
-partition was used by the retained vanilla arm and retired demos. It is not
-comparable with the external terminal-use artifact. The previously disclosed
-exposure of `task_002` and `task_008` remains an additional contamination
-caveat.
+For historical comparison only, the previously active Sol prompt's adaptive
+retest scored 19/49 (38.7755%), versus 15/49 (30.6122%) for the canonical
+alltools baseline. One original no-reward infrastructure row was replaced by a
+separately authorized, single missing-only retry; the final manifest proves the
+other 48 rows remained unchanged. That score does not apply to the Luna
+prompt. Any future score remains reused-holdout evidence rather than a pristine
+held-out result because the partition was used by the retained vanilla arm and
+retired demos. It is not comparable with the external terminal-use artifact.
+The previously disclosed exposure of `task_002` and `task_008` remains an
+additional contamination caveat.

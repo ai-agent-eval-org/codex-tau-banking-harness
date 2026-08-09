@@ -40,11 +40,13 @@ matrices:
 The current `optimized-test-alltools` config pins a complete replacement system
 prompt authored only after the retained train run. Its train-only derivation,
 fixed path, and SHA-256 are recorded in `PROMPT_OPTIMIZATION.md`. The current
-optimized adaptive retest finalized as
+Luna prompt has not been evaluated. For history only, the previously active
+Sol prompt's optimized adaptive retest finalized as
 `optimized-test-alltools-20260809T033050Z--recovery-bb161af26fd2` after one
 separately authorized missing-only infrastructure retry. It scored 19/49. The
 manifest preserves the retry provenance and proves the other 48 rows were not
-rerun. Both the original execution and retry authorizations are consumed.
+rerun. That score does not apply to the Luna prompt. Both historical execution
+and retry authorizations are consumed.
 Because the test partition was used by the retained vanilla arm and earlier
 retired demos, the result is an adaptive retest, not a pristine held-out run.
 In every case, test trajectories must not feed prompt optimization.
@@ -52,7 +54,7 @@ In every case, test trajectories must not feed prompt optimization.
 ## Prompt optimization is one-shot
 
 `codex-tau optimize` is not an evaluation or submission path. One execution
-uses a fresh personal-ChatGPT app-server thread at GPT-5.6-Sol/max to inspect
+uses a fresh personal-ChatGPT app-server thread at GPT-5.6-Luna/max to inspect
 only the fixed 48-trace train packet and submit exactly one local candidate.
 It has no test access, candidate evaluation, selection loop, or automatic
 retry. It leaves the active prompt unchanged and writes only to the ignored

@@ -102,14 +102,15 @@ task_102
 - An optimized prompt artifact and experiment config may be authored only
   after the fresh vanilla train run has completed. The prompt must be derived
   only from those train traces, then its repo-relative path and SHA-256 must be
-  frozen before an evaluation. The current Sol prompt was produced once from
-  a leakage-safe export of the 48 train traces. Its finalized adaptive retest,
-  `optimized-test-alltools-20260809T033050Z--recovery-bb161af26fd2`, scored
-  19/49 after one separately authorized missing-only infrastructure retry. The
-  manifest proves the original 48 completed rows were preserved and that no
-  full-matrix rerun occurred. Both authorizations are consumed; no active
-  recovery record is present. The result is not a pristine held-out
-  evaluation.
+  frozen before an evaluation. The current Luna prompt was produced once from
+  the hash-pinned export of the 48 train traces and promoted byte-for-byte; it
+  has no test score yet. The previously active Sol prompt's finalized adaptive
+  retest, `optimized-test-alltools-20260809T033050Z--recovery-bb161af26fd2`,
+  scored 19/49 after one separately authorized missing-only infrastructure
+  retry. That historical result does not score the current Luna prompt. Both
+  historical evaluation authorizations are consumed; no active recovery
+  record is present. Any future test is an adaptive retest, not a pristine
+  held-out evaluation.
 - Do not commit raw runs, credentials, embedding caches, or large artifacts.
   The narrow existing exceptions are the credential-scanned Option A and
   Option B test `results.json` files already tracked under `runs/`, authorized

@@ -255,32 +255,25 @@ uv run codex-tau preflight experiments/optimized-test-alltools.toml
 uv run codex-tau run experiments/optimized-test-alltools.toml
 ```
 
-The active prompt was synthesized once by GPT-5.6-Sol from a leakage-safe
+The active prompt was synthesized once by GPT-5.6-Luna/max from the standalone
 packet containing only the 48 completed train trajectories, canonical
-baseline, and all 17 authoritative tool contracts. Its historical optimizer
-instruction is pinned by commit and hash in
-[PROMPT_OPTIMIZATION.md](PROMPT_OPTIMIZATION.md); the current instruction file
-drives the standalone command and must not be misrepresented as the bytes that
-produced this already-frozen prompt. The previous instruction-only optimized
-run was deleted as a superseded demo artifact and is not evidence for it.
+baseline, and all 17 authoritative tool contracts. The one app-server turn
+read and analyzed all 48 traces and 17 tools, reread its complete external
+ledger, and submitted one prompt. The harness retained that submission without
+content filtering, and the repository prompt is an exact byte match. Its
+generation provenance and fixed hashes are recorded in
+[PROMPT_OPTIMIZATION.md](PROMPT_OPTIMIZATION.md). It has not yet been evaluated.
 
-The final adaptive retest is
+For historical comparison only, the previously active GPT-5.6-Sol prompt's
+final adaptive retest was
 `optimized-test-alltools-20260809T033050Z--recovery-bb161af26fd2`. It scored
 **19/49 (38.7755%)**, compared with the canonical alltools baseline's **15/49
-(30.6122%)**: four additional passes and an observed increase of 8.1633
-percentage points. All 49 trajectories ended with `user_stop`; all 1,495
-accepted dynamic-tool calls received their results; and all adapter audits
-passed the authentication, model, prompt, capability, reroute, and delivery
-gates.
+(30.6122%)**. One original no-reward infrastructure row was replaced by a
+separately authorized missing-only retry that preserved the other 48 rows.
+That result does not score the current Luna prompt, and both historical
+evaluation authorizations are consumed.
 
-One original row failed before grading because the evaluated agent returned an
-empty message. A separately authorized recovery replaced exactly that missing
-row while cryptographically preserving the other 48. The final manifest
-classifies this truthfully as a single missing-only infrastructure retry, not
-an independent rerun. The one-shot authorization is consumed and its active
-JSON record has been removed from the branch tip.
-
-Any completed result must be labeled an adaptive retest because the same
+Any future completed result must be labeled an adaptive retest because the same
 partition was used by the retained vanilla evaluation and retired demos. Only
 aggregate score, completion, and integrity fields may be inspected; test
 trajectories and per-task outcomes must never become prompt feedback. The run

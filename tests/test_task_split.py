@@ -97,7 +97,7 @@ def test_optimized_test_is_exactly_frozen_and_hash_pinned() -> None:
         "prompt_mode": "train_trace_one_shot_full_system_prompt",
         "system_prompt_path": "prompts/banking_knowledge/optimized.md",
         "system_prompt_file_sha256": (
-            "4022d30ae66d704fdc1954202aafd94ef0140f3dea65a53b0f154b702ec47e4c"
+            "91fe41860cca2655f664ba4f8a1a8251aa43d567ecee08bfd67f5ab03a0d8550"
         ),
     }
 
@@ -124,5 +124,5 @@ def test_optimized_test_is_exactly_frozen_and_hash_pinned() -> None:
         artifact.read_bytes()
     )
     assert experiment["system_prompt_file_sha256"] == (
-        "4022d30ae66d704fdc1954202aafd94ef0140f3dea65a53b0f154b702ec47e4c"
+        "91fe41860cca2655f664ba4f8a1a8251aa43d567ecee08bfd67f5ab03a0d8550"
     )
