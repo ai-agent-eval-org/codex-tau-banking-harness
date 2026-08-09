@@ -284,6 +284,7 @@ class CodexAppServer:
             ),
             "tool_results_returned": 0,
             "thread_settings_update_count": 0,
+            "thread_settings_preflight_verified": False,
             "thread_settings_verified": False,
             "turns_completed": 0,
             "turns_started": 0,
@@ -432,6 +433,68 @@ class CodexAppServer:
         self.audit["thread_settings_update_count"] += 1
         self.audit["thread_settings_verified"] = True
         self._checkpoint("thread/settings/updated:verified")
+
+    def verify_effective_thread_settings(self, timeout: float = 30) -> None:
+        """Exercise and verify app-server's settings lifecycle without a model turn."""
+        if self._thread_id is None or self._expected_cwd is None:
+            raise ProtocolError("app-server thread settings cannot be preflighted")
+        result = self.transport.request(
+            "thread/settings/update",
+            {
+                "threadId": self._thread_id,
+                "cwd": self._expected_cwd,
+                "approvalPolicy": "never",
+                "sandboxPolicy": {"type": "readOnly"},
+                "model": self._model,
+                "effort": self._reasoning_effort,
+                "personality": "none",
+            },
+            timeout=timeout,
+        )
+        if not isinstance(result, Mapping):
+            raise ProtocolError("thread/settings/update returned a malformed response")
+        deadline = time.monotonic() + timeout
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise ProtocolError("timed out verifying thread settings lifecycle")
+            try:
+                message = self.transport.inbox.get(timeout=min(remaining, 0.25))
+            except queue.Empty:
+                continue
+            if "transportError" in message:
+                raise ProtocolError(str(message["transportError"]))
+            if "id" in message:
+                raise ProtocolError(
+                    "unexpected app-server request during settings preflight"
+                )
+            method = message.get("method")
+            params = message.get("params") or {}
+            if method == "thread/settings/updated":
+                self._accept_thread_settings_update(params)
+                self.audit["thread_settings_preflight_verified"] = True
+                self._checkpoint("thread/settings/preflight:verified")
+                return
+            if method == "remoteControl/status/changed":
+                status = params.get("status")
+                self.audit["remote_control_statuses"].append(status)
+                if status != "disabled":
+                    self.audit["native_capability_denied"] = True
+                    raise ProtocolError(
+                        f"Codex remote control was not disabled: {status!r}"
+                    )
+                continue
+            if method in {
+                "thread/started",
+                "thread/status/changed",
+                "thread/tokenUsage/updated",
+                "account/rateLimits/updated",
+            }:
+                continue
+            raise ProtocolError(
+                f"unexpected app-server notification during settings preflight: "
+                f"{method!r}"
+            )
 
     def start_turn(self, user_text: str) -> tuple[str | list[ToolCall], bool]:
         if not self._thread_id:

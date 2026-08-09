@@ -12,8 +12,13 @@ class FakeTransport:
     def __init__(self, messages: list[dict]):
         self.inbox = queue.Queue()
         self.stderr_line_count = 0
+        self.requests: list[tuple[str, object]] = []
         for message in messages:
             self.inbox.put(message)
+
+    def request(self, method: str, params: object = None, timeout: float = 60) -> dict:
+        self.requests.append((method, params))
+        return {}
 
     def close(self) -> None:
         pass
@@ -155,6 +160,48 @@ def test_exact_thread_settings_update_is_verified() -> None:
     assert runtime._wait_for_output() == ("done", True)
     assert runtime.audit["thread_settings_update_count"] == 1
     assert runtime.audit["thread_settings_verified"] is True
+
+
+def test_settings_lifecycle_preflight_starts_no_turn() -> None:
+    transport = FakeTransport(
+        [
+            {
+                "method": "thread/settings/updated",
+                "params": {
+                    "threadId": "thread-1",
+                    "threadSettings": {
+                        "cwd": "/tmp/empty-codex-cwd",
+                        "approvalPolicy": "never",
+                        "sandboxPolicy": {"type": "readOnly"},
+                        "model": "gpt-5.6-sol",
+                        "modelProvider": "openai",
+                        "serviceTier": None,
+                        "effort": "max",
+                        "summary": None,
+                        "personality": "none",
+                        "collaborationMode": {
+                            "mode": "default",
+                            "settings": {"developerInstructions": ""},
+                        },
+                    },
+                },
+            }
+        ]
+    )
+    runtime = CodexAppServer(
+        repo_root=Path("."),
+        tools=[],
+        system_prompt="prompt",
+        model="gpt-5.6-sol",
+        reasoning_effort="max",
+        transport=transport,  # type: ignore[arg-type]
+    )
+    runtime._thread_id = "thread-1"
+    runtime._expected_cwd = "/tmp/empty-codex-cwd"
+    runtime.verify_effective_thread_settings()
+    assert transport.requests[0][0] == "thread/settings/update"
+    assert runtime.audit["thread_settings_preflight_verified"] is True
+    assert runtime.audit["turns_started"] == 0
 
 
 @pytest.mark.parametrize(

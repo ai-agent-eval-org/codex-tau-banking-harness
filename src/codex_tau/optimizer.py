@@ -689,6 +689,7 @@ def optimizer_preflight(
         )
         toolkit = OptimizerPacketTools(packet_dir)
         with _runtime(repo_root=repo_root, toolkit=toolkit) as runtime:
+            runtime.verify_effective_thread_settings()
             audit = dict(runtime.audit)
         return {
             "source_run": str(resolved_source),
@@ -756,6 +757,7 @@ def run_optimizer(
         tool_map = toolkit.get_tools()
         catalog = ToolCatalog(tool_map.values())
         with _runtime(repo_root=repo_root, toolkit=toolkit) as runtime:
+            runtime.verify_effective_thread_settings()
             value, complete = runtime.start_turn(BOOTSTRAP_INSTRUCTION)
             handled_calls = 0
             while not complete:
