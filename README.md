@@ -188,48 +188,17 @@ uv run codex-tau run experiments/smoke-reference.toml
 experiment matrix in the code allowlist; name, filename, profile, partition,
 task ordering, trials, concurrency, and prompt fields must all match.
 
-## Historical two-task alltools concurrency validation
+## Validation history
 
-The completed validation used `task_002` and `task_008`, four trials each, and
-two workers. Audits used the per-trial simulation seed in their filenames so
-same-task trials could not overwrite one another:
-
-```bash
-uv run codex-tau preflight experiments/pilot2-alltools-concurrency2.toml
-uv run codex-tau run experiments/pilot2-alltools-concurrency2.toml
-```
-
-## Historical five-task alltools pilot
-
-The completed pilot used the first five IDs of the already-frozen test ordering:
-`task_002`, `task_008`, `task_010`, `task_012`, and `task_014`. It ran four
-trials per task with up to eight concurrent workers while preserving the model,
-reasoning, simulator, seed, and step limit. It deliberately used τ-bench's
-`alltools` profile:
-
-```bash
-uv run codex-tau preflight experiments/pilot5-alltools.toml
-uv run codex-tau run experiments/pilot5-alltools.toml
-```
-
-It ran only after the two-task concurrency validation completed without an
-infrastructure error. This pilot is not comparable to the external
-`terminal_use` result. See [PILOT_STATUS.md](PILOT_STATUS.md) for its execution
-evidence.
-
-## Historical concurrency-16 scaling trial
-
-The scaling trial reused the exact five-task, four-trial pilot matrix and
-changed only the maximum worker count from eight to 16. It was a transport and
-throughput validation, not a new benchmark partition:
-
-```bash
-uv run codex-tau preflight experiments/pilot5-alltools-concurrency16.toml
-uv run codex-tau run experiments/pilot5-alltools-concurrency16.toml
-```
-
-The runtime allowlist accepts only this exact concurrency-16 combination; it
-does not authorize arbitrary task expansion or leaderboard submission.
+On 2026-08-08, a bounded two-task validation followed by the same
+five-task/four-trial `alltools` matrix at concurrency eight and 16 completed
+without infrastructure errors. Both five-task runs passed 13/20 trajectories;
+concurrency 16 reduced wall time from 5m15s to 3m16s and remains the validated
+ceiling. The transport diagnosis and 64 MiB reader fix are summarized above.
+The disclosed pilot-task exposure remains recorded in
+[REFERENCE_PARITY.md](REFERENCE_PARITY.md) and
+[PROMPT_OPTIMIZATION.md](PROMPT_OPTIMIZATION.md). Retained experiment configs
+are reproducibility controls, not permission to rerun them.
 
 ## Completed alltools vanilla runs
 

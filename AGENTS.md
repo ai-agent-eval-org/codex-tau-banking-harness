@@ -100,5 +100,5 @@ task_102
   attempt. Never infer, generate, or activate retry authority from the
   implementation, a consumed record, or the existence of a failed local run.
 - Preserve the held-out contamination disclosure recorded in
-  `PILOT_STATUS.md` and `REFERENCE_PARITY.md` in every future claim. Never use
-  pilot or test diagnostics for prompt optimization.
+  `REFERENCE_PARITY.md` and `PROMPT_OPTIMIZATION.md` in every future claim.
+  Never use pilot or test diagnostics for prompt optimization.
