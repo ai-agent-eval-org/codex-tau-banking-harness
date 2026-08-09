@@ -15,10 +15,13 @@ simulation can start.
 ## Non-submission rule
 
 This is a local evaluation repository. **Never prepare, publish, upload, or
-submit its results or trajectories to a τ-bench leaderboard or any third party
-without fresh, explicit human authorization naming the target and scope.** A
-request to run or compare tasks is not submission authorization. The durable
-execution and publication rules are in [BENCHMARK_POLICY.md](BENCHMARK_POLICY.md).
+submit its results or trajectories to a τ-bench leaderboard.** Publication or
+disclosure to any other third party requires fresh, explicit human
+authorization naming the target and scope.
+
+A request to run or compare tasks is not submission authorization and grants
+no publication authority. The durable execution and publication rules are in
+[BENCHMARK_POLICY.md](BENCHMARK_POLICY.md).
 
 ## Architecture
 
@@ -149,7 +152,12 @@ train, and sorting each stored partition. The prior smoke/optimization tasks,
 `task_001` and `task_004`, are both in train. Prompt iteration and human
 labeling must use train only; the test partition is aggregate evaluation only.
 
-## Two-task smoke runs
+The commands below are exact reproducibility recipes, not standing permission
+for model inference. `preflight` is model-free. Every new `run` or
+`resume-interrupted` invocation requires fresh human authorization for its exact
+local scope and expected cost; completed one-shot authorizations are consumed.
+
+## Historical two-task smoke configuration
 
 The fixed tasks were selected before scoring: `task_001` is a product
 retrieval/recommendation task; `task_004` exercises the distinct account
@@ -169,23 +177,23 @@ uv run codex-tau run experiments/smoke-reference.toml
 experiment matrix in the code allowlist; name, filename, profile, partition,
 task ordering, trials, concurrency, and prompt fields must all match.
 
-## Two-task alltools concurrency validation
+## Historical two-task alltools concurrency validation
 
-The concurrency ramp begins with `task_002` and `task_008`, four trials each,
-and two workers. Audits use the per-trial simulation seed in their filenames so
-same-task trials cannot overwrite one another:
+The completed validation used `task_002` and `task_008`, four trials each, and
+two workers. Audits used the per-trial simulation seed in their filenames so
+same-task trials could not overwrite one another:
 
 ```bash
 uv run codex-tau preflight experiments/pilot2-alltools-concurrency2.toml
 uv run codex-tau run experiments/pilot2-alltools-concurrency2.toml
 ```
 
-## Five-task alltools pilot
+## Historical five-task alltools pilot
 
-The optional pilot uses the first five IDs of the already-frozen test ordering:
-`task_002`, `task_008`, `task_010`, `task_012`, and `task_014`. It runs four
+The completed pilot used the first five IDs of the already-frozen test ordering:
+`task_002`, `task_008`, `task_010`, `task_012`, and `task_014`. It ran four
 trials per task with up to eight concurrent workers while preserving the model,
-reasoning, simulator, seed, and step limit. It deliberately uses τ-bench's
+reasoning, simulator, seed, and step limit. It deliberately used τ-bench's
 `alltools` profile:
 
 ```bash
@@ -193,15 +201,15 @@ uv run codex-tau preflight experiments/pilot5-alltools.toml
 uv run codex-tau run experiments/pilot5-alltools.toml
 ```
 
-Run it only after the two-task concurrency validation completes without an
+It ran only after the two-task concurrency validation completed without an
 infrastructure error. This pilot is not comparable to the external
-`terminal_use` result. See [PILOT_STATUS.md](PILOT_STATUS.md) for the latest
-execution evidence.
+`terminal_use` result. See [PILOT_STATUS.md](PILOT_STATUS.md) for its execution
+evidence.
 
-## Concurrency-16 scaling trial
+## Historical concurrency-16 scaling trial
 
-The scaling trial reuses the exact five-task, four-trial pilot matrix and
-changes only the maximum worker count from eight to 16. It is a transport and
+The scaling trial reused the exact five-task, four-trial pilot matrix and
+changed only the maximum worker count from eight to 16. It was a transport and
 throughput validation, not a new benchmark partition:
 
 ```bash
@@ -212,10 +220,10 @@ uv run codex-tau run experiments/pilot5-alltools-concurrency16.toml
 The runtime allowlist accepts only this exact concurrency-16 combination; it
 does not authorize arbitrary task expansion or leaderboard submission.
 
-## Fresh alltools vanilla runs
+## Completed alltools vanilla runs
 
-The newly authorized baseline consists of two separately saved, single-trial
-experiments. Both use the canonical τ-bench agent instruction byte-for-byte,
+The completed baseline consists of two separately saved, single-trial
+experiments. Both used the canonical τ-bench agent instruction byte-for-byte,
 the authoritative unmodified `alltools` policy and toolkit, GPT-5.4/high through
 personal ChatGPT authentication, GPT-5.2/low for the simulator, 200 steps, seed
 300, and concurrency 16:
@@ -235,18 +243,19 @@ alltools baselines; neither is reference-comparable or leaderboard-valid.
 
 ## One-shot train-trace prompt pass
 
-Only after `vanilla-train-alltools` finishes may its 48 saved trajectories be
-read for prompt work. The method is a single generalizing reflection pass,
-inspired by research such as GEPA but not an execution of GEPA: there is no
-iterative search, candidate loop, or validation-guided selection. Inspect the
-fresh train traces once, make one task-level `AGENT_INSTRUCTION` revision, write
-the fixed artifact, record its SHA-256 in a separately named
-`optimized-test-alltools` config, freeze both, and run the 49-task test once.
+Only after `vanilla-train-alltools` finished were its 48 saved trajectories
+read for prompt work. The method was a single generalizing reflection pass,
+inspired by research such as GEPA but not an execution of GEPA: there was no
+iterative search, candidate loop, or validation-guided selection. The train
+traces were inspected once, one task-level `AGENT_INSTRUCTION` revision was
+written, its SHA-256 was pinned in the separately named
+`optimized-test-alltools` config, and both artifacts were frozen before the
+49-task test ran once.
 
 Do not inspect the vanilla or optimized test trajectories for prompt feedback.
-The frozen artifact, its derivation report, and the bounded config are now
+The frozen artifact, its derivation report, and the bounded config are
 present. The harness rejects the optimized experiment if its fixed path or hash
-changes. The authorized commands, when execution is separately intended, are:
+changes. The retained reproducibility commands are:
 
 ```bash
 uv run codex-tau preflight experiments/optimized-test-alltools.toml
@@ -263,28 +272,16 @@ contamination and non-publication caveats apply.
 ### Consumed interrupted-run recovery
 
 `codex-tau resume-interrupted EXPERIMENT SOURCE_RUN_DIR` is a fail-closed
-recovery mechanism, not standing permission to retry anything. It requires a
-fresh, explicit human authorization for the exact interrupted source and one
-retry, followed by a committed, clean, hash-pinned record at
-`authorizations/resume-interrupted.json`.
+missing-only recovery mechanism, not standing permission to retry. It requires
+fresh human authorization for one exact interrupted source and one retry,
+encoded in a committed, clean, hash-pinned record. Recovery preserves the
+source, validates the frozen matrix and provenance, skips completed rows, and
+uses an exclusive attempt claim and receipt to prevent a second attempt. See
+[authorizations/README.md](authorizations/README.md) for the full contract.
 
-When separately authorized and pinned, recovery validates the complete source
-matrix, configuration, prompt, tool schema, source results, and adapter-audit
-set; preserves the source byte-for-byte; stages one missing-only checkpoint;
-and invokes pinned τ-bench auto-resume under held-out quiet output. An exact
-pre-inference `Info`/task gate rejects τ-bench's otherwise permissive config
-drift. Completed rows are skipped and must remain unchanged. An exclusive
-attempt claim plus a separately validated receipt prevents concurrent,
-ambiguous, started, or failed retries from running a second time. Source and
-clean-commit evidence is rechecked before inference and finalization. The final
-manifest labels the result as a single missing-only infrastructure retry, not
-an independent full-matrix rerun. See
-[authorizations/README.md](authorizations/README.md) for the record contract.
-The exact record used for Trial B has been consumed. Its one retry completed,
-and the attempt claim and receipt make it terminal; no additional retry is
-authorized. Merely having this implementation, a failed local run, the
-consumed record, or an authorization for the original experiment is not retry
-authorization.
+The Trial B record is consumed and terminal. Its completed retry authorizes no
+additional model work; neither the implementation nor a failed local run can
+create retry authority.
 
 ## Frozen test run
 
@@ -304,7 +301,7 @@ trajectories must not be used for subsequent prompt optimization.
 
 ## Reference comparability
 
-The controllable trajectory settings now match the external reference's
+The controllable trajectory settings match the external reference's
 GPT-5.4/high, GPT-5.2/low, seed 300, `terminal_use`, 200-step configuration and
 standard τ-bench prompt. See [REFERENCE_PARITY.md](REFERENCE_PARITY.md) for the
 remaining known and unknown differences. In particular, app-server/ChatGPT

@@ -118,8 +118,9 @@ boundaries.
   maximum steps.
 
 The experiment remains local-only and aggregate-only. Test outcomes must not be
-used to revise this prompt, and neither results nor trajectories may be
-submitted or published without fresh explicit authorization.
+used to revise this prompt. Results and trajectories must never be submitted to
+a τ-bench leaderboard; any other publication requires fresh explicit
+authorization.
 
 ## Execution status
 

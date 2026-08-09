@@ -1,9 +1,10 @@
 # Repository evaluation rules
 
 This repository is a local-only Codex/τ-bench evaluation harness. Never
-prepare, publish, upload, or submit results or trajectories to a leaderboard or
-third party without fresh, explicit human authorization naming the target and
-scope. Running or comparing tasks is not submission authorization.
+prepare, publish, upload, or submit results or trajectories to a τ-bench
+leaderboard. Publication or disclosure to any other third party requires fresh,
+explicit human authorization naming the target and scope. Running or comparing
+tasks is not publication authorization.
 
 ## Frozen banking train/test split
 
@@ -47,14 +48,14 @@ task_102
 ## Experimental hygiene
 
 - Prompt optimization, human labeling, failure analysis, and trajectory review
-  may use train tasks only. For the authorized one-shot prompt pass, the only
-  optimization evidence is the fresh `vanilla-train-alltools` run produced by
-  this harness. Do not use the earlier pilots or inspect any test trajectory.
-- The one-shot pass is methodologically inspired by prompt-reflection research,
-  including GEPA, but it is not GEPA: there is no iterative optimizer, candidate
-  search, selection loop, or evaluation-feedback cycle. Read the complete fresh
-  train traces once, make one general task-level revision, freeze it, and stop
-  optimizing before the optimized test run.
+  may use train tasks only. For the completed one-shot prompt pass, the only
+  optimization evidence was the fresh `vanilla-train-alltools` run produced by
+  this harness. The earlier pilots and all test trajectories were excluded.
+- The completed one-shot pass was methodologically inspired by prompt-reflection
+  research, including GEPA, but it was not GEPA: there was no iterative
+  optimizer, candidate search, selection loop, or evaluation-feedback cycle.
+  The complete fresh train traces were read once, one general task-level
+  revision was frozen, and optimization stopped before the optimized test run.
 - Freeze the prompt and harness before a test run. Test outcomes may be used
   only for an aggregate evaluation report, never as feedback for the next
   prompt. If test feedback influences development, disclose that the test set
@@ -67,29 +68,30 @@ task_102
   schemas, GPT-5.4/high through personal ChatGPT authentication, 200 maximum
   steps, and GPT-5.2/low for the official user simulator. The Platform API key
   may be used only by the simulator, never by Codex.
-- The separately named `pilot2-alltools-concurrency2` validation is authorized
-  only for `task_002` and `task_008`, four trials each, at concurrency two. The
-  `pilot5-alltools` experiment is authorized only for its five explicit IDs,
-  four trials each, at concurrency eight, and may run only after the validation
-  succeeds. Both may use the Platform key for official OpenAI embeddings and
-  the GPT-5.2 simulator, but never for evaluated Codex inference. Never label
-  either run reference-comparable.
+- The completed `pilot2-alltools-concurrency2` validation used only `task_002`
+  and `task_008`, four trials each, at concurrency two. The completed
+  `pilot5-alltools` experiments used only their five explicit IDs, four trials
+  each, at concurrency eight and then 16. Their one-shot execution authority is
+  consumed; the retained configs are reproducibility records, not permission
+  to rerun them. They used the Platform key only for official OpenAI embeddings
+  and the GPT-5.2 simulator, never for evaluated Codex inference. Never label
+  these runs reference-comparable.
 - A custom or optimized prompt is a separately named experiment and must never
   be represented as reference-comparable. The reference and vanilla profiles
   have no custom prompt artifact or additional developer instructions. The only
-  authorized optimized form replaces `AGENT_INSTRUCTION` from the fixed,
+  completed optimized form replaces `AGENT_INSTRUCTION` from the fixed,
   repo-relative UTF-8 artifact path
   `prompts/banking_knowledge/optimized.md`, pinned by SHA-256,
   while rendering the unmodified τ-bench `SYSTEM_PROMPT` with the authoritative
   `alltools` policy. Additional developer instructions are forbidden.
-- Keep task IDs, trial counts, and concurrency explicit. The two authorized
-  four-trial alltools runs above are the only multi-trial exceptions. Fresh
-  authorization also covers exactly one canonical `alltools` trial for all 48
-  frozen train IDs and, separately, all 49 frozen test IDs, each at concurrency
-  16. After the train traces exist and the one-shot prompt is frozen, it covers
-  one separately named optimized `alltools` test trial over the same 49 test IDs
-  at concurrency 16. It does not authorize extra trials, different tasks,
-  concurrency above 16, a combined 97-task run, or submission.
+- Keep task IDs, trial counts, and concurrency explicit. The completed
+  four-trial alltools runs above are the only multi-trial exceptions. A separate
+  one-shot authorization covered one canonical `alltools` trial for all 48
+  frozen train IDs, one for all 49 frozen test IDs, and one separately named
+  optimized test trial over those same 49 IDs, each at concurrency 16. All
+  three completed and their execution authority is consumed. Any rerun or new
+  matrix needs fresh authorization; no authorization permits a combined
+  97-task run, concurrency above 16, or leaderboard submission.
 - The optimized prompt artifact and experiment config may be authored only
   after the fresh vanilla train run has completed. The prompt must be derived
   only from those train traces, then its repo-relative path and SHA-256 must

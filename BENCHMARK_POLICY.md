@@ -2,17 +2,17 @@
 
 This repository is a local evaluation harness. Its standing rule is:
 
-> Never prepare, publish, upload, or submit results or trajectories to any
-> τ-bench leaderboard or third party without fresh, explicit human
-> authorization that names the submission target and scope.
+> Never prepare, publish, upload, or submit results or trajectories to a
+> τ-bench leaderboard. Publication or disclosure to any other third party
+> requires fresh, explicit human authorization naming the target and scope.
 
 In particular:
 
-- A request to run, inspect, compare, or summarize tasks is **not** permission
-  to submit results.
+- A request to run, inspect, compare, or summarize tasks is **not** publication
+  permission.
 - Do not create a leaderboard submission file, invoke a submission-preparation
-  command, open a submission pull request, or upload trajectories without that
-  separate authorization.
+  command, open a submission pull request, or upload trajectories to a
+  leaderboard. There is no exception to this repository rule.
 - Do not merge a harness pull request on the user's behalf unless separately
   authorized.
 - Do not run a complete domain or expand the configured task/trial set without
@@ -21,12 +21,15 @@ In particular:
   explicitly authorized after a credential and size review.
 
 The repository intentionally provides `preflight` and bounded local `run`
-commands only. It provides no leaderboard submission command. The exact legacy
-allowlist remains the two-task smoke set, the two-task/four-trial alltools
-validation, the five-task/four-trial alltools pilots at concurrency eight and
-16, and the frozen 49-task terminal-use reference test.
+commands only. It provides no leaderboard submission command. Its exact
+configuration allowlist includes the two-task smoke set, the
+two-task/four-trial alltools validation, the five-task/four-trial alltools
+pilots at concurrency eight and 16, and the frozen 49-task terminal-use
+reference test. Allowlisting validates configuration; it is not execution
+authorization.
 
-Fresh authorization adds three exact, local-only `alltools` matrices:
+A now-consumed one-shot authorization covered three exact, local-only
+`alltools` matrices:
 
 1. `vanilla-train-alltools`: the frozen 48 train IDs, one trial, concurrency 16;
 2. `vanilla-test-alltools`: the frozen 49 test IDs, one trial, concurrency 16;
@@ -38,10 +41,11 @@ The third experiment and its prompt artifact were authored only after the first
 matrix produced the authorized train traces. Their train-only derivation,
 fixed path, and SHA-256 are recorded in `PROMPT_OPTIMIZATION.md`. Test
 output remains aggregate-only. In all cases, test trajectories must not feed prompt optimization.
-The authorization does not cover extra trials, other task IDs,
-concurrency above 16, one combined 97-task run, or any submission. Any future
-expansion must preserve the personal-ChatGPT/Platform billing boundary and
-remain local by default.
+All three matrices completed. Their execution authority is consumed and does
+not cover a rerun, extra trial, other task ID, concurrency above 16, or one
+combined 97-task run. Any future local execution requires fresh authorization
+for its exact scope and cost, must preserve the personal-ChatGPT/Platform
+billing boundary, and can never authorize leaderboard submission.
 
 ## Interrupted-run recovery is one-shot and consumed
 

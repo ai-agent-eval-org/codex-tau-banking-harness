@@ -10,6 +10,10 @@ def test_non_submission_rule_is_prominent_and_durable() -> None:
     readme = (REPO_ROOT / "README.md").read_text()
     agents = (REPO_ROOT / "AGENTS.md").read_text()
     assert "Never prepare, publish, upload, or submit" in policy
+    assert "τ-bench leaderboard" in policy
+    assert "There is no exception to this repository rule" in policy
+    assert "leaderboard or third party without fresh" not in policy
+    assert "leaderboard or any third party\nwithout fresh" not in readme
     assert "request to run, inspect, compare, or summarize tasks" in policy
     assert "BENCHMARK_POLICY.md" in readme
     assert "request to run or compare tasks is not submission authorization" in readme
