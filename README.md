@@ -219,11 +219,13 @@ The inference command has no required arguments. It is fixed to the retained
 48-trace train run, the full canonical baseline prompt, all 17 authoritative
 tool contracts, the checked-in optimizer instruction, GPT-5.6-Sol/max, and the
 existing personal ChatGPT authentication. The child process receives no
-Platform API key, developer instruction, instruction source, native Codex
-capability, test evidence, or previous optimized prompt. Its seven dynamic
-tools can only inspect the packet, maintain and reread a complete analysis
-ledger, and submit one report plus one prompt. App-server context compaction is
-accepted only as a counted lifecycle event.
+Platform API key, developer instruction, instruction source, test evidence, or
+previous optimized prompt. Only this optimizer subprocess enables app-server's
+isolated local Code Mode host; it can orchestrate the seven dynamic packet
+tools but receives no shell, filesystem, web, network, memory, MCP, app,
+plugin, or subagent capability. The tools can only inspect the packet, maintain
+and reread a complete analysis ledger, and submit one report plus one prompt.
+App-server context compaction is accepted only as a counted lifecycle event.
 
 Verified output is written below the ignored local directory
 `optimizer-runs/one-shot-<timestamp>/`. It contains a report, a candidate

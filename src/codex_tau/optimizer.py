@@ -56,8 +56,9 @@ successful traces as regression controls and assign each failed trace one
 primary prompt-controllable cluster. After coverage is complete, reread the
 entire external analysis ledger in bounded chunks. Then call
 submit_optimization exactly once with the complete optimization report and the
-complete replacement system prompt. Do not use native tools, request other
-data, produce intermediate prompt candidates, or perform an evaluation. After
+complete replacement system prompt. Use the isolated Code Mode entrypoint only
+to invoke the seven supplied packet tools. Do not request other data or tools,
+produce intermediate prompt candidates, or perform an evaluation. After the
 submission is accepted, return a short completion message.
 """
 
@@ -664,6 +665,7 @@ def _runtime(*, repo_root: Path, toolkit: OptimizerPacketTools) -> CodexAppServe
         system_prompt=toolkit.packet_text["optimizer.md"],
         model=OPTIMIZER_MODEL,
         reasoning_effort=OPTIMIZER_REASONING_EFFORT,
+        enable_optimizer_code_mode=True,
         allowed_item_types=OPTIMIZER_ALLOWED_ITEM_TYPES,
         turn_output_timeout_seconds=7_200,
         turn_output_idle_timeout_seconds=600,

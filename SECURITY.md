@@ -28,12 +28,14 @@ denied native capability. Only runtime dynamic tools derived from τ-bench
 The standalone optimizer uses the same sanitized child environment, empty
 temporary working directory, empty developer instructions, instruction-source
 rejection, reroute detection, and field-by-field verification of app-server's
-effective turn-settings notification. Its dynamic catalog contains only seven
+effective turn-settings notification. Its subprocess alone enables app-server's
+local Code Mode host so GPT-5.6-Sol can orchestrate exactly seven dynamic,
 packet-specific tools for bounded evidence reads, external analysis-ledger
-writes/reads, and one final submission. Context compaction is the sole added
-app-server item type and is counted only as a lifecycle event; it grants no
-filesystem, network, memory, or other native capability. The evaluated-agent
-allowlist does not accept context compaction.
+writes/reads, and one final submission. The shared config remains disabled, so
+the evaluated GPT-5.4 agent never receives Code Mode. Shell, filesystem, web,
+network, memory, MCP, apps, plugins, and subagents remain disabled for both.
+Context compaction is the optimizer's sole added app-server lifecycle item and
+is counted; the evaluated-agent allowlist does not accept it.
 
 Official generic `warning` notifications are accepted only when their payload
 is well-formed and scoped to the current thread. They are non-fatal lifecycle

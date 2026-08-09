@@ -58,7 +58,14 @@ def reject_native_item(
 class JsonRpcProcess:
     """Asyncio subprocess transport presented through a synchronous boundary."""
 
-    def __init__(self, command: list[str], cwd: Path, env: Mapping[str, str]):
+    def __init__(
+        self,
+        command: list[str],
+        cwd: Path,
+        env: Mapping[str, str],
+        *,
+        app_server_args: tuple[str, ...] = (),
+    ):
         self.inbox: queue.Queue[Mapping[str, Any]] = queue.Queue()
         self.stderr_line_count = 0
         self._loop = asyncio.new_event_loop()
@@ -71,7 +78,7 @@ class JsonRpcProcess:
         self._reader_task: asyncio.Task[None] | None = None
         self._stderr_task: asyncio.Task[None] | None = None
         future = asyncio.run_coroutine_threadsafe(
-            self._start(command, cwd, env), self._loop
+            self._start(command, cwd, env, app_server_args), self._loop
         )
         future.result(timeout=30)
 
@@ -80,11 +87,16 @@ class JsonRpcProcess:
         self._loop.run_forever()
 
     async def _start(
-        self, command: list[str], cwd: Path, env: Mapping[str, str]
+        self,
+        command: list[str],
+        cwd: Path,
+        env: Mapping[str, str],
+        app_server_args: tuple[str, ...],
     ) -> None:
         self._process = await asyncio.create_subprocess_exec(
             *command,
             "app-server",
+            *app_server_args,
             "--strict-config",
             cwd=cwd,
             env=dict(env),
@@ -241,6 +253,7 @@ class CodexAppServer:
         system_prompt: str,
         model: str = "gpt-5.4",
         reasoning_effort: str = "high",
+        enable_optimizer_code_mode: bool = False,
         allowed_item_types: frozenset[str] = _ALLOWED_ITEM_TYPES,
         turn_output_timeout_seconds: float = TURN_OUTPUT_TIMEOUT_SECONDS,
         turn_output_idle_timeout_seconds: float = TURN_OUTPUT_IDLE_TIMEOUT_SECONDS,
@@ -261,6 +274,13 @@ class CodexAppServer:
         self._audit_sink = audit_sink
         self._model = model
         self._reasoning_effort = reasoning_effort
+        self._enable_optimizer_code_mode = enable_optimizer_code_mode
+        if enable_optimizer_code_mode and (
+            model != "gpt-5.6-sol" or reasoning_effort != "max"
+        ):
+            raise ProtocolError(
+                "optimizer Code Mode is restricted to GPT-5.6-Sol/max"
+            )
         self._allowed_item_types = allowed_item_types
         self._turn_output_timeout_seconds = turn_output_timeout_seconds
         self._turn_output_idle_timeout_seconds = turn_output_idle_timeout_seconds
@@ -269,6 +289,8 @@ class CodexAppServer:
                 system_prompt.encode()
             ).hexdigest(),
             "context_compaction_count": 0,
+            "optimizer_code_mode_enabled": enable_optimizer_code_mode,
+            "optimizer_code_mode_host": "local" if enable_optimizer_code_mode else None,
             "developer_instructions_empty": True,
             "dynamic_call_count": 0,
             "dynamic_call_names": [],
@@ -308,8 +330,16 @@ class CodexAppServer:
         shutil.copyfile(repo_root / "codex" / "config.toml", home / "config.toml")
         os.symlink(source_auth.resolve(), home / "auth.json")
         child_env["CODEX_HOME"] = str(home)
+        app_server_args = (
+            ("--enable", "code_mode", "--enable", "code_mode_host")
+            if enable_optimizer_code_mode
+            else ()
+        )
         self.transport = JsonRpcProcess(
-            command, Path(self._temporary_cwd.name), child_env
+            command,
+            Path(self._temporary_cwd.name),
+            child_env,
+            app_server_args=app_server_args,
         )
         self._initialize(system_prompt)
 

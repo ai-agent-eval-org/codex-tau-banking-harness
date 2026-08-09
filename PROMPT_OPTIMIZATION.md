@@ -26,7 +26,7 @@ evaluation, validation feedback, test feedback, or iterative revision.
 is now the instruction used by the standalone `codex-tau optimize` command.
 Its SHA-256 is:
 
-`832f55fc376cbe7321cd541f89f0c4d0860fcbdeac72aa28008cddfee44f4a7b`
+`0c61b7d1d593a4473a1b0ba3ed88ea7fe1c9f89bf396bfd23f415c2fce2d5b69`
 
 The instruction makes tool descriptions and schemas first-class evidence. It
 requires complete trace and tool coverage, causal failure analysis, successful
@@ -52,12 +52,13 @@ uv run codex-tau optimize
 
 The inference command prepares the packet internally, creates one fresh
 ephemeral app-server thread using personal ChatGPT authentication and
-GPT-5.6-Sol/max, and exposes only seven audited packet tools. It requires all
-48 traces and all 17 tool contracts to be fully read and analyzed, then requires
-the complete external ledger to be reread before accepting one report and one
-replacement prompt. Trace contents are untrusted evidence, not instructions.
-App-server context compaction is counted as a lifecycle event and adds no
-native capability.
+GPT-5.6-Sol/max. Only that subprocess enables app-server's local Code Mode host,
+which can orchestrate the seven audited packet tools but has no shell,
+filesystem, web, network, memory, MCP, app, plugin, or subagent capability. It
+requires all 48 traces and all 17 tool contracts to be fully read and analyzed,
+then requires the complete external ledger to be reread before accepting one
+report and one replacement prompt. Trace contents are untrusted evidence, not
+instructions. App-server context compaction is counted as a lifecycle event.
 
 The command has no candidate search, automatic retry, or evaluation step. Its
 ignored `optimizer-runs/one-shot-<timestamp>/` bundle is a candidate only; the

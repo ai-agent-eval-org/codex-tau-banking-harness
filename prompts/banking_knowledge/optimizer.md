@@ -39,7 +39,8 @@ without first calling `inspect_packet` is invalid.
 
 ## Standalone execution interface
 
-The harness exposes the inputs only through audited dynamic tools. You have no
+The harness exposes the inputs only through seven audited dynamic tools. Use
+the isolated Code Mode entrypoint only to call those tools. It provides no
 native shell, filesystem, web, memory, or subagent capability. This is
 intentional and does not make the evidence incomplete.
 

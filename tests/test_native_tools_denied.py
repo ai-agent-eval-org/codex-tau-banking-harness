@@ -64,6 +64,44 @@ def test_context_compaction_requires_an_explicit_non_evaluation_allowlist() -> N
     )
 
 
+def test_optimizer_code_mode_is_restricted_to_sol_max() -> None:
+    with pytest.raises(ProtocolError, match="restricted to GPT-5.6-Sol/max"):
+        CodexAppServer(
+            repo_root=Path("."),
+            tools=[],
+            system_prompt="prompt",
+            model="gpt-5.4",
+            reasoning_effort="high",
+            enable_optimizer_code_mode=True,
+            transport=FakeTransport([]),  # type: ignore[arg-type]
+        )
+
+
+def test_optimizer_code_mode_is_explicitly_audited() -> None:
+    runtime = CodexAppServer(
+        repo_root=Path("."),
+        tools=[],
+        system_prompt="prompt",
+        model="gpt-5.6-sol",
+        reasoning_effort="max",
+        enable_optimizer_code_mode=True,
+        transport=FakeTransport([]),  # type: ignore[arg-type]
+    )
+    assert runtime.audit["optimizer_code_mode_enabled"] is True
+    assert runtime.audit["optimizer_code_mode_host"] == "local"
+
+
+def test_evaluated_agent_does_not_enable_optimizer_code_mode() -> None:
+    runtime = CodexAppServer(
+        repo_root=Path("."),
+        tools=[],
+        system_prompt="prompt",
+        transport=FakeTransport([]),  # type: ignore[arg-type]
+    )
+    assert runtime.audit["optimizer_code_mode_enabled"] is False
+    assert runtime.audit["optimizer_code_mode_host"] is None
+
+
 def test_optimizer_allowlist_counts_completed_context_compaction() -> None:
     transport = FakeTransport(
         [
