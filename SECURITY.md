@@ -9,7 +9,7 @@ OpenAI/Codex API-key and access-token variables, creates an isolated temporary
 `CODEX_HOME`, and requires app-server `account/read` to report a managed
 ChatGPT account. An API-key account, missing account, model fallback, or absent
 required entitlement aborts the run. Evaluated banking agents remain fixed to
-GPT-5.4/high; the separate one-shot optimizer requires GPT-5.6-Sol/max through
+GPT-5.4/high; the separate one-shot optimizer requires GPT-5.6-Luna/max through
 the same personal ChatGPT boundary.
 
 The temporary Codex home links to the existing auth file; it never copies,
@@ -29,7 +29,7 @@ The standalone optimizer uses the same sanitized child environment, empty
 temporary working directory, empty developer instructions, instruction-source
 rejection, reroute detection, and field-by-field verification of app-server's
 effective turn-settings notification. Its subprocess alone enables app-server's
-local Code Mode host so GPT-5.6-Sol can orchestrate exactly seven dynamic,
+local Code Mode host so GPT-5.6-Luna can orchestrate exactly seven dynamic,
 packet-specific tools for bounded evidence reads, external analysis-ledger
 writes/reads, and one final submission. The shared config remains disabled, so
 the evaluated GPT-5.4 agent never receives Code Mode. Shell, filesystem, web,

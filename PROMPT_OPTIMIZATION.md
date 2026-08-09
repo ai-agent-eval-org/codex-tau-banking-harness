@@ -52,7 +52,7 @@ uv run codex-tau optimize
 
 The inference command prepares the packet internally, creates one fresh
 ephemeral app-server thread using personal ChatGPT authentication and
-GPT-5.6-Sol/max. Only that subprocess enables app-server's local Code Mode host,
+GPT-5.6-Luna/max. Only that subprocess enables app-server's local Code Mode host,
 which can orchestrate the seven audited packet tools but has no shell,
 filesystem, web, network, memory, MCP, app, plugin, or subagent capability. It
 requires all 48 traces and all 17 tool contracts to be fully read and analyzed,

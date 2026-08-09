@@ -64,8 +64,8 @@ def test_context_compaction_requires_an_explicit_non_evaluation_allowlist() -> N
     )
 
 
-def test_optimizer_code_mode_is_restricted_to_sol_max() -> None:
-    with pytest.raises(ProtocolError, match="restricted to GPT-5.6-Sol/max"):
+def test_optimizer_code_mode_is_restricted_to_luna_max() -> None:
+    with pytest.raises(ProtocolError, match="restricted to GPT-5.6-Luna/max"):
         CodexAppServer(
             repo_root=Path("."),
             tools=[],
@@ -82,7 +82,7 @@ def test_optimizer_code_mode_is_explicitly_audited() -> None:
         repo_root=Path("."),
         tools=[],
         system_prompt="prompt",
-        model="gpt-5.6-sol",
+        model="gpt-5.6-luna",
         reasoning_effort="max",
         enable_optimizer_code_mode=True,
         transport=FakeTransport([]),  # type: ignore[arg-type]
@@ -159,7 +159,7 @@ def test_exact_thread_settings_update_is_verified() -> None:
                         "cwd": "/tmp/empty-codex-cwd",
                         "approvalPolicy": "never",
                         "sandboxPolicy": {"type": "readOnly"},
-                        "model": "gpt-5.6-sol",
+                        "model": "gpt-5.6-luna",
                         "effort": "max",
                         "personality": "none",
                         "collaborationMode": {
@@ -189,7 +189,7 @@ def test_exact_thread_settings_update_is_verified() -> None:
         repo_root=Path("."),
         tools=[],
         system_prompt="prompt",
-        model="gpt-5.6-sol",
+        model="gpt-5.6-luna",
         reasoning_effort="max",
         transport=transport,  # type: ignore[arg-type]
     )
@@ -211,7 +211,7 @@ def test_settings_lifecycle_preflight_starts_no_turn() -> None:
                         "cwd": "/tmp/empty-codex-cwd",
                         "approvalPolicy": "never",
                         "sandboxPolicy": {"type": "readOnly"},
-                        "model": "gpt-5.6-sol",
+                        "model": "gpt-5.6-luna",
                         "modelProvider": "openai",
                         "serviceTier": None,
                         "effort": "max",
@@ -230,7 +230,7 @@ def test_settings_lifecycle_preflight_starts_no_turn() -> None:
         repo_root=Path("."),
         tools=[],
         system_prompt="prompt",
-        model="gpt-5.6-sol",
+        model="gpt-5.6-luna",
         reasoning_effort="max",
         transport=transport,  # type: ignore[arg-type]
     )
@@ -257,7 +257,7 @@ def test_thread_settings_drift_fails_closed(field: str, value: object) -> None:
         "cwd": "/tmp/empty-codex-cwd",
         "approvalPolicy": "never",
         "sandboxPolicy": {"type": "readOnly"},
-        "model": "gpt-5.6-sol",
+        "model": "gpt-5.6-luna",
         "effort": "max",
         "personality": "none",
     }
@@ -266,7 +266,7 @@ def test_thread_settings_drift_fails_closed(field: str, value: object) -> None:
         repo_root=Path("."),
         tools=[],
         system_prompt="prompt",
-        model="gpt-5.6-sol",
+        model="gpt-5.6-luna",
         reasoning_effort="max",
         transport=FakeTransport(
             [

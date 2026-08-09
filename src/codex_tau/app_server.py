@@ -276,10 +276,10 @@ class CodexAppServer:
         self._reasoning_effort = reasoning_effort
         self._enable_optimizer_code_mode = enable_optimizer_code_mode
         if enable_optimizer_code_mode and (
-            model != "gpt-5.6-sol" or reasoning_effort != "max"
+            model != "gpt-5.6-luna" or reasoning_effort != "max"
         ):
             raise ProtocolError(
-                "optimizer Code Mode is restricted to GPT-5.6-Sol/max"
+                "optimizer Code Mode is restricted to GPT-5.6-Luna/max"
             )
         self._allowed_item_types = allowed_item_types
         self._turn_output_timeout_seconds = turn_output_timeout_seconds

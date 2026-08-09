@@ -93,7 +93,7 @@ task_102
   requires fresh, explicit authorization for one exact train packet and one
   optimizer attempt. Its presence is not standing authority. It must use a
   fresh ephemeral app-server thread, personal ChatGPT authentication,
-  GPT-5.6-Sol/max, no Platform API key, and no evidence outside the fixed train
+  GPT-5.6-Luna/max, no Platform API key, and no evidence outside the fixed train
   packet. Its optimizer-only local Code Mode host may orchestrate exactly the
   seven audited packet tools; native shell, filesystem, web, memory, apps,
   plugins, and subagents remain disabled. It may emit one ignored local

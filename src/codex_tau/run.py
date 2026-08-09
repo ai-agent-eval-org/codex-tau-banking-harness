@@ -810,7 +810,7 @@ def _parser() -> argparse.ArgumentParser:
     resume.add_argument("source_run_dir", type=Path)
     optimize = subparsers.add_parser(
         "optimize",
-        help="run one train-only GPT-5.6-Sol prompt optimization",
+        help="run one train-only GPT-5.6-Luna prompt optimization",
     )
     optimize.add_argument(
         "--source-run",

@@ -217,7 +217,7 @@ uv run codex-tau optimize
 
 The inference command has no required arguments. It is fixed to the retained
 48-trace train run, the full canonical baseline prompt, all 17 authoritative
-tool contracts, the checked-in optimizer instruction, GPT-5.6-Sol/max, and the
+tool contracts, the checked-in optimizer instruction, GPT-5.6-Luna/max, and the
 existing personal ChatGPT authentication. The child process receives no
 Platform API key, developer instruction, instruction source, test evidence, or
 previous optimized prompt. Only this optimizer subprocess enables app-server's

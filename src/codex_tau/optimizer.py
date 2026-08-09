@@ -16,7 +16,7 @@ from .app_server import CodexAppServer
 from .optimizer_packet import export_optimizer_packet
 from .tool_bridge import ToolCatalog, canonical_hash
 
-OPTIMIZER_MODEL = "gpt-5.6-sol"
+OPTIMIZER_MODEL = "gpt-5.6-luna"
 OPTIMIZER_REASONING_EFFORT = "max"
 DEFAULT_SOURCE_RUN = Path("runs/vanilla-train-alltools-20260808T212330Z")
 DEFAULT_OUTPUT_ROOT = Path("optimizer-runs")
