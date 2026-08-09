@@ -2,7 +2,6 @@
 
 import hashlib
 import json
-import re
 import subprocess
 import tempfile
 from datetime import UTC, datetime
@@ -124,59 +123,6 @@ class _Coverage:
     @property
     def delivered(self) -> int:
         return sum(right - left for left, right in self.ranges)
-
-
-def validate_optimized_prompt(prompt: str, baseline: str) -> None:
-    """Reject malformed, trace-specific, or non-replacement prompt output."""
-    _require(
-        prompt == prompt.strip() + "\n", "optimized prompt needs one final newline"
-    )
-    _require(500 <= len(prompt) <= 100_000, "optimized prompt length is invalid")
-    _require(prompt != baseline, "optimizer returned the unchanged baseline")
-    _require(
-        re.fullmatch(
-            r"<instructions>\n.+\n</instructions>\n<policy>\n.+\n</policy>\n",
-            prompt,
-            flags=re.DOTALL,
-        )
-        is not None,
-        "prompt must contain only one nonempty instructions section followed by "
-        "one nonempty policy section",
-    )
-    _require("```" not in prompt, "optimized prompt must not contain code fences")
-    forbidden = (
-        r"\btrain_trace_\d+\b",
-        r"\btask_\d+\b",
-        r"\btraces?\b",
-        r"\bgrader\b",
-        r"\breward\b",
-        r"\bbenchmark\b",
-        r"\bsimulator\b",
-        r"\bevaluat(?:e|ed|ing|ion|ions|or|ors)\b",
-        r"\boptimi[sz](?:e|ed|es|er|ers|ing|ation|ations)\b",
-        r"\bvalidation (?:set|trace|result)\b",
-        r"\btest (?:set|trace|result)\b",
-        r"\bproduction trace\b",
-    )
-    for pattern in forbidden:
-        _require(
-            re.search(pattern, prompt, flags=re.IGNORECASE) is None,
-            f"optimized prompt contains forbidden evidence language: {pattern}",
-        )
-    _require(
-        re.search(r"[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}", prompt, re.I) is None,
-        "optimized prompt contains an email address",
-    )
-    _require(
-        re.search(
-            r"\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-"
-            r"[89ab][0-9a-f]{3}-[0-9a-f]{12}\b",
-            prompt,
-            re.I,
-        )
-        is None,
-        "optimized prompt contains a UUID",
-    )
 
 
 class OptimizerPacketTools(ToolKitBase):
@@ -555,17 +501,8 @@ class OptimizerPacketTools(ToolKitBase):
             coverage_error is None,
             f"optimizer coverage is incomplete: {coverage_error}",
         )
-        _require(
-            isinstance(optimization_report, str)
-            and 500 <= len(optimization_report) <= 200_000,
-            "optimization report length is invalid",
-        )
-        if not optimized_prompt.endswith("\n"):
-            optimized_prompt += "\n"
-        baseline = self.packet_text["baseline_prompt.md"]
-        validate_optimized_prompt(optimized_prompt, baseline)
         self.submission = {
-            "optimization_report": optimization_report.strip() + "\n",
+            "optimization_report": optimization_report,
             "optimized_prompt": optimized_prompt,
         }
         return {

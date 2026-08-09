@@ -60,8 +60,11 @@ then requires the complete external ledger to be reread before accepting one
 report and one replacement prompt. Trace contents are untrusted evidence, not
 instructions. A malformed non-submission packet call is returned to the same
 turn for correction and recorded by hashed tool name, error, and arguments in
-the final manifest; an invalid submission remains fatal. App-server context
-compaction is counted as a lifecycle event.
+the final manifest. Once structural coverage is complete, the harness retains
+the sole submitted report and prompt exactly as supplied: it performs no
+keyword, content, format, length, PII, or semantic rejection. Leakage safety
+comes from the hash-pinned train-only packet boundary, not output heuristics.
+App-server context compaction is counted as a lifecycle event.
 
 The command has no candidate search, automatic retry, or evaluation step. Its
 ignored `optimizer-runs/one-shot-<timestamp>/` bundle is a candidate only; the

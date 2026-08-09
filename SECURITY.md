@@ -39,9 +39,12 @@ is counted; the evaluated-agent allowlist does not accept it.
 
 A malformed optimizer read or ledger call is returned as a failed dynamic-tool
 result so the same turn can correct an inventory reference. The final manifest
-records only hashes of its error and arguments. Submission errors remain fatal,
-and successful output still requires complete packet reads, all 65 ledger
-entries, a complete ledger reread, and exactly one accepted submission.
+records only hashes of its error and arguments. Successful output still
+requires complete packet reads, all 65 ledger entries, a complete ledger
+reread, and exactly one submission. After those structural checks, the report
+and prompt are retained byte-for-byte without keyword, content, format, length,
+PII, or semantic rejection. The evidence boundary—not a generated-text
+heuristic—is the leakage control.
 
 Official generic `warning` notifications are accepted only when their payload
 is well-formed and scoped to the current thread. They are non-fatal lifecycle

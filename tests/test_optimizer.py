@@ -17,7 +17,6 @@ from codex_tau.optimizer import (
     OptimizerRunError,
     _execute_calls,
     _write_non_submission_bundle,
-    validate_optimized_prompt,
 )
 from codex_tau.run import _parser
 from codex_tau.tool_bridge import ToolCatalog
@@ -211,7 +210,7 @@ def test_non_submission_tool_argument_error_is_returned_for_correction(
     assert set(errors[0]) == {"tool", "error_sha256", "arguments_sha256"}
 
 
-def test_invalid_submission_remains_fatal(tmp_path: Path) -> None:
+def test_submission_before_structural_coverage_remains_fatal(tmp_path: Path) -> None:
     toolkit = OptimizerPacketTools(synthetic_packet(tmp_path))
     with pytest.raises(OptimizerRunError, match="coverage is incomplete"):
         _execute_calls(
@@ -253,20 +252,19 @@ def test_trace_analysis_requires_full_read_and_correct_outcome_class(
         )
 
 
-@pytest.mark.parametrize(
-    "injected",
-    [
-        "train_trace_001",
-        "task_004",
-        "the grader reward",
-        "customer@example.com",
-        "123e4567-e89b-12d3-a456-426614174000",
-    ],
-)
-def test_optimized_prompt_rejects_evidence_specific_content(injected: str) -> None:
-    prompt = candidate_prompt().replace("Resolve", f"{injected} Resolve", 1)
-    with pytest.raises(OptimizerRunError):
-        validate_optimized_prompt(prompt, "baseline")
+def test_submission_retains_optimizer_output_without_content_rejection(
+    tmp_path: Path,
+) -> None:
+    toolkit = OptimizerPacketTools(synthetic_packet(tmp_path))
+    complete_evidence(toolkit)
+    toolkit.read_analysis_ledger(max_chars=200_000)
+    report = "short report retained exactly"
+    prompt = "arbitrary prompt containing trace, grader, reward, and task_004"
+    toolkit.submit_optimization(report, prompt)
+    assert toolkit.submission == {
+        "optimization_report": report,
+        "optimized_prompt": prompt,
+    }
 
 
 def test_optimizer_model_catalog_requires_sol_max() -> None:
