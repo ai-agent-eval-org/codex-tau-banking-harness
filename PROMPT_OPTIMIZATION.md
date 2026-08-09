@@ -9,9 +9,11 @@ train trajectories once, split into two fixed halves for qualitative review,
 then synthesized one general replacement for τ-bench's `AGENT_INSTRUCTION`.
 
 No test task definition, test trajectory, test reward, or test result was
-viewed. Earlier pilots and other runs were not optimization evidence. No model
-inference, preflight, validation run, candidate evaluation, or leaderboard
-submission was performed while authoring the prompt.
+viewed. Earlier pilots and other runs were not optimization evidence. Codex
+subagents performed the train-trace qualitative review and one-shot synthesis.
+During prompt authoring there was no additional benchmark evaluated-agent or
+user-simulator inference, benchmark preflight, candidate or validation
+evaluation, test run, or leaderboard submission.
 
 This method is inspired only at a high level by reflection-based prompt
 optimization research, including GEPA. It is **not GEPA**: there was no
@@ -145,9 +147,32 @@ score, or valid vanilla-to-optimized delta. No held-out task identity,
 definition, trajectory, per-task reward, or individual adapter audit was
 opened, and the frozen prompt was not revised.
 
-Interrupted-run recovery remains dormant. Using it requires fresh, explicit
-authorization for this exact source run and one retry, encoded in the exact
-committed, hash-pinned authorization record required by the harness. No retry
-has been performed. Until a separately authorized recovery completes and the
-full run passes every audit and manifest gate, no optimized partial score is
-reported and no prompt-improvement claim is possible.
+That original attempt remains invalid and unscored. Its exact, separately
+authorized missing-only recovery is
+`optimized-test-alltools-20260808T221206Z--recovery-c716dea3506a`. Recovery took
+**7m23.253s** wall time; the one retried trajectory took **7m09.358s**. The
+recovery skipped and preserved all 48 completed rows and audits, retried exactly
+the sole missing row with its original simulation seed, and left the source run
+immutable.
+
+The recovered optimized run scored **23/49 (46.9388%)**, compared with the
+vanilla held-out run's **15/49 (30.6122%)**: **8 additional passes** and an
+observed increase of **16.3265 percentage points**. All 49 final trajectories
+ended with `user_stop`; none ended in an infrastructure or unexpected error.
+All 1,897 accepted dynamic-tool calls had their 1,897 results returned, and all
+49 adapter audits passed.
+
+The recovery used hash-pinned authorization `c716dea…`, the unchanged prompt
+SHA-256 `dddd25c976a631e2559c6afefc90582328ae0ca9bc78be07e565ea53e47717c9`,
+source harness commit `57e184f`, recovery harness commit `2ae5eb1`, and pinned
+τ-bench commit `fc0055dc4e0a316c3f83133267fbd6faaa770992`. The exact
+authorization is consumed; it permits no additional retry. No held-out task
+identity, definition, trajectory, per-task reward, or individual adapter audit
+was opened for human inspection during recovery or aggregate reporting.
+
+This is an observed improvement on one local, single-trial held-out split. It
+is not proof that the prompt caused the difference or that the result
+generalizes. In addition, `task_002` and `task_008` had previously been exposed
+during infrastructure diagnosis, so any held-out interpretation retains that
+contamination caveat. These local results are not leaderboard results and do
+not authorize publication, upload, or submission.

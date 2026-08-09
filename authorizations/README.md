@@ -1,7 +1,9 @@
 # Exact interrupted-run retry authorization
 
-This directory documents a dormant, local-only recovery gate. It intentionally
-contains no active `resume-interrupted.json` record.
+This directory documents a local-only, one-shot recovery gate. The exact
+`resume-interrupted.json` record committed for Trial B has been consumed. It is
+retained as provenance, but its attempt claim and receipt are terminal and it
+authorizes no additional retry.
 
 The `resume-interrupted` command is implementation, not authorization. Before
 any model work, a human must freshly and explicitly authorize exactly one retry
@@ -75,3 +77,14 @@ reward.
 
 Neither creating nor using a recovery record authorizes publication, upload,
 submission, additional trials, or a leaderboard action.
+
+## Consumed Trial B record
+
+The record with authorization digest prefix `c716dea…` authorized exactly one
+original-seed missing-only retry of the interrupted optimized source. That
+retry completed under harness commit `2ae5eb1` and produced the ignored local
+recovery directory
+`optimized-test-alltools-20260808T221206Z--recovery-c716dea3506a`. The source
+remained immutable, and 48 completed rows and audits were preserved and
+skipped. The authorization is now consumed; it cannot be reused for another
+attempt and grants no publication or submission authority.

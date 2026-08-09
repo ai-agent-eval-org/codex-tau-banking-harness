@@ -58,11 +58,18 @@ the `alltools` retrieval policy and toolkit. They are internal baselines for the
 prompt study, not extensions of the terminal-use reference profile and not
 reference-comparable.
 
-The future `optimized-test-alltools` arm will differ again by replacing only
+The completed `optimized-test-alltools` arm differed again by replacing only
 the `AGENT_INSTRUCTION` substitution with one path-and-hash-pinned artifact
 derived in a single pass from fresh vanilla train traces. τ-bench's
 `SYSTEM_PROMPT`, authoritative alltools domain policy, tools, model, reasoning,
-simulator, task IDs, trial count, step limit, and concurrency remain fixed.
-There will be no additional developer instructions. Its score can be compared
-only with the fresh alltools vanilla test arm under this local methodology, not
-with the external terminal-use artifact.
+simulator, task IDs, trial count, step limit, and concurrency remained fixed,
+with no additional developer instructions. One original no-reward
+infrastructure failure was recovered through an exact, original-seed,
+missing-only retry; 48 completed rows and audits were preserved and skipped.
+
+The recovered optimized arm scored 23/49 (46.9388%), while the fresh alltools
+vanilla test arm scored 15/49 (30.6122%). That observed single-trial difference
+is comparable only within this local alltools methodology. It is not proof of
+causality or general performance and is not comparable with the external
+terminal-use artifact. The previously disclosed exposure of `task_002` and
+`task_008` remains a contamination caveat for held-out interpretation.

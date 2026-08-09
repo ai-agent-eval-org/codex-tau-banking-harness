@@ -253,19 +253,20 @@ uv run codex-tau preflight experiments/optimized-test-alltools.toml
 uv run codex-tau run experiments/optimized-test-alltools.toml
 ```
 
-The aggregate-only outcomes and current interrupted optimized-attempt status
-are recorded in [PROMPT_OPTIMIZATION.md](PROMPT_OPTIMIZATION.md). No valid
-optimized score or improvement claim exists unless the complete run passes its
-audit and manifest gates.
+The aggregate-only outcomes are recorded in
+[PROMPT_OPTIMIZATION.md](PROMPT_OPTIMIZATION.md). The completed optimized arm
+scored 23/49 (46.9388%) versus the vanilla held-out arm's 15/49 (30.6122%), an
+observed single-trial difference of 8 passes and 16.3265 percentage points.
+This is not proof of causality or general performance, and the standing
+contamination and non-publication caveats apply.
 
-### Dormant interrupted-run recovery
+### Consumed interrupted-run recovery
 
 `codex-tau resume-interrupted EXPERIMENT SOURCE_RUN_DIR` is a fail-closed
 recovery mechanism, not standing permission to retry anything. It requires a
 fresh, explicit human authorization for the exact interrupted source and one
 retry, followed by a committed, clean, hash-pinned record at
-`authorizations/resume-interrupted.json`. This repository deliberately does not
-contain that active record.
+`authorizations/resume-interrupted.json`.
 
 When separately authorized and pinned, recovery validates the complete source
 matrix, configuration, prompt, tool schema, source results, and adapter-audit
@@ -279,8 +280,11 @@ clean-commit evidence is rechecked before inference and finalization. The final
 manifest labels the result as a single missing-only infrastructure retry, not
 an independent full-matrix rerun. See
 [authorizations/README.md](authorizations/README.md) for the record contract.
-Merely having this implementation, a failed local run, or an authorization for
-the original experiment is not retry authorization.
+The exact record used for Trial B has been consumed. Its one retry completed,
+and the attempt claim and receipt make it terminal; no additional retry is
+authorized. Merely having this implementation, a failed local run, the
+consumed record, or an authorization for the original experiment is not retry
+authorization.
 
 ## Frozen test run
 

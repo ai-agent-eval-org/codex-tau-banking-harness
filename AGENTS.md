@@ -99,9 +99,10 @@ task_102
   execute it. An interrupted trajectory may be retried only after fresh,
   explicit human authorization for that exact source run and one retry, encoded
   in the exact hash-pinned record documented under `authorizations/`, committed
-  with a clean harness. This repository intentionally contains no active retry
-  authorization record by default. Never infer, generate, or activate one from
-  the existence of a failed local run.
+  with a clean harness. The exact Trial B record was consumed by its one
+  successful missing-only retry and is terminal; it authorizes no additional
+  attempt. Never infer, generate, or activate retry authority from the
+  implementation, a consumed record, or the existence of a failed local run.
 - `task_002` and `task_008` were exposed during infrastructure diagnosis on
   2026-08-08. Future held-out claims that include them must disclose that
   contamination; do not use their diagnostics for prompt optimization.
