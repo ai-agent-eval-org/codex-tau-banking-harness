@@ -26,7 +26,7 @@ evaluation, validation feedback, test feedback, or iterative revision.
 is now the instruction used by the standalone `codex-tau optimize` command.
 Its SHA-256 is:
 
-`575b12d0f9fbc928c524db87c186444a5d8beb62d9422c434d8407b7df2cb149`
+`832f55fc376cbe7321cd541f89f0c4d0860fcbdeac72aa28008cddfee44f4a7b`
 
 The instruction makes tool descriptions and schemas first-class evidence. It
 requires complete trace and tool coverage, causal failure analysis, successful

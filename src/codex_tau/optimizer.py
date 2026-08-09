@@ -712,6 +712,39 @@ def _default_output_dir(repo_root: Path) -> Path:
     return repo_root / DEFAULT_OUTPUT_ROOT / f"one-shot-{stamp}"
 
 
+def _write_non_submission_bundle(
+    *,
+    output_dir: Path,
+    final_response: str,
+    audit: Mapping[str, Any],
+    coverage: Mapping[str, Any],
+    provenance: Mapping[str, Any],
+) -> None:
+    """Retain a local-only diagnostic when a turn ends without submission."""
+    output_dir.mkdir(parents=True)
+    response_path = output_dir / "final-response.txt"
+    response_path.write_text(final_response)
+    receipt = {
+        "format_version": 1,
+        "classification": "failed optimizer attempt: no submission",
+        "codex": dict(audit),
+        "coverage": dict(coverage),
+        "final_response": {
+            "path": response_path.name,
+            "chars": len(final_response),
+            "sha256": _sha256_path(response_path),
+        },
+        "harness": dict(provenance),
+        "promotion": {
+            "active_prompt_unchanged": True,
+            "evaluation_run": False,
+        },
+    }
+    (output_dir / "failure.json").write_text(
+        json.dumps(receipt, indent=2, sort_keys=True) + "\n"
+    )
+
+
 def run_optimizer(
     *,
     repo_root: Path,
@@ -774,10 +807,19 @@ def run_optimizer(
             runtime.require_complete_tool_delivery()
             audit = dict(runtime.audit)
 
-        _require(
-            toolkit.submission is not None, "optimizer completed without submission"
-        )
         coverage = toolkit.coverage_manifest()
+        if toolkit.submission is None:
+            _write_non_submission_bundle(
+                output_dir=resolved_output,
+                final_response=value,
+                audit=audit,
+                coverage=coverage,
+                provenance=provenance,
+            )
+            raise OptimizerRunError(
+                "optimizer completed without submission; local diagnostic: "
+                f"{resolved_output}"
+            )
         _require(coverage["submission_count"] == 1, "optimizer submission count drift")
         _require(
             coverage["traces_complete"] == coverage["traces_required"] == 48,

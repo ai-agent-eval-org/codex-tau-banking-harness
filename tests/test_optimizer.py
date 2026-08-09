@@ -14,6 +14,7 @@ from codex_tau.optimizer import (
     PACKET_FILES,
     OptimizerPacketTools,
     OptimizerRunError,
+    _write_non_submission_bundle,
     validate_optimized_prompt,
 )
 from codex_tau.run import _parser
@@ -261,3 +262,23 @@ def test_packet_rejects_any_other_train_results(tmp_path: Path) -> None:
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
     with pytest.raises(OptimizerRunError, match="fixed authorized train evidence"):
         OptimizerPacketTools(packet)
+
+
+def test_non_submission_bundle_is_local_and_diagnostic(tmp_path: Path) -> None:
+    output = tmp_path / "optimizer-runs" / "failed-attempt"
+    _write_non_submission_bundle(
+        output_dir=output,
+        final_response="No submission was made.",
+        audit={"turns_started": 1, "turns_completed": 1},
+        coverage={"submission_count": 0},
+        provenance={"commit": "abc123", "tracked_worktree_clean": True},
+    )
+    receipt = json.loads((output / "failure.json").read_text())
+    assert receipt["classification"] == "failed optimizer attempt: no submission"
+    assert receipt["final_response"]["path"] == "final-response.txt"
+    assert receipt["coverage"]["submission_count"] == 0
+    assert receipt["promotion"] == {
+        "active_prompt_unchanged": True,
+        "evaluation_run": False,
+    }
+    assert (output / "final-response.txt").read_text() == "No submission was made."
