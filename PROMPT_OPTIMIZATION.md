@@ -21,23 +21,16 @@ local result directories were retired as demo artifacts before this pass.
 
 ## Effective optimization instruction
 
-The human instruction, normalized after the follow-up clarifications, was:
+There was no single frozen optimizer-instruction artifact for the completed
+optimization. Its human direction was distributed across the working
+conversation, so it cannot be reproduced as one exact optimizer prompt.
 
-> Review the 48 fresh vanilla train trajectories once, using subagents for the
-> qualitative review and synthesis. Treat those train traces as the only
-> optimization evidence. Produce one general replacement for the complete
-> shared `<instructions>` plus `<policy>` system prompt. Make changes that
-> address recurring process failures and generalize across the banking domain;
-> do not encode task-specific answers. GEPA is inspiration only: do not run
-> GEPA, search candidates, iterate against evaluations, or use validation/test
-> feedback. Exclude pilots and every test task, trajectory, reward, and audit.
-> Preserve the unmodified structured alltools schemas and all runtime, model,
-> authentication, and developer-instruction boundaries. Freeze the single
-> resulting prompt before testing it.
-
-There was no separate hidden optimizer-prompt artifact. This instruction was
-provided through the working conversation and was not added to the evaluated
-agent's prompt.
+[`prompts/banking_knowledge/optimizer.md`](prompts/banking_knowledge/optimizer.md)
+is the canonical instruction for any future optimization pass. It requires a
+first-class review of every tool description and schema alongside the baseline
+prompt and authorized production traces. It is a post-hoc reproducibility
+improvement and was **not** the instruction used to produce the currently
+evaluated optimized prompt.
 
 ## Optimization unit
 
