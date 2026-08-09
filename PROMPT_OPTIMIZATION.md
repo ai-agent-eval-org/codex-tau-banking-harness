@@ -149,26 +149,35 @@ Codex-native capabilities, reroute detection, complete dynamic-tool delivery
 audits, incremental checkpointing, final manifests, and a 64 MiB app-server
 stream-reader limit.
 
-The authorized adaptive retest started from clean commit
-`a829bd3f4bb79af2a6ae5129b970493434d3f38e` as
-`optimized-test-alltools-20260809T033050Z`. Forty-eight trajectories ended
-with `user_stop` and have binary rewards. One trajectory ended with
-`infrastructure_error` and no reward after the evaluated agent returned an
-empty `AssistantMessage` containing neither content nor a tool call. The
-harness therefore refused to create a manifest or certify a 49-task score.
+The authorized adaptive retest started from clean prompt commit
+`a829bd3f4bb79af2a6ae5129b970493434d3f38e`. One original trajectory failed
+before grading because the evaluated agent returned an empty
+`AssistantMessage`. The fail-closed harness reported no partial score. After
+fresh explicit authorization, recovery commit
+`dd4ddcdf6a809eb58b7d7c77ca606e54777a0aa8` retried exactly that missing key,
+preserved the 48 completed rows, and finalized
+`optimized-test-alltools-20260809T033050Z--recovery-bb161af26fd2`.
 
-All 49 adapter audits still verified personal ChatGPT authentication,
-GPT-5.4/high, the frozen prompt hashes, no model reroute, no instruction-source
-injection, explicit empty developer instructions, no Codex-native capability
-event, the 64 MiB reader, and complete delivery of all 1,497 accepted
-dynamic-tool calls with zero pending results. The checkpoint SHA-256 is
-`0a8d8280b2d28866f85913bb6422d5dccee7a7922adecec69fa638c88797dee7`.
+The final adaptive retest scored **19/49 (38.7755%)**, compared with the
+canonical alltools baseline's **15/49 (30.6122%)**: **four additional passes**
+and an observed increase of **8.1633 percentage points**. All 49 trajectories
+ended with `user_stop`; no final row has an infrastructure or unexpected
+error. All 1,495 accepted dynamic-tool calls received their 1,495 results.
 
-No partial score is reported, and no test outcome was used to revise the
-prompt. Completing the matrix requires a separately authorized, single
-missing-only infrastructure retry of this exact immutable source run. Until
-that succeeds and the final manifest passes, the current Sol prompt has no
-certified eval-set score.
+All 49 adapter audits verified personal ChatGPT authentication, GPT-5.4/high,
+the frozen prompt hashes, no model reroute, no instruction-source injection,
+explicit empty developer instructions, no Codex-native capability event, the
+64 MiB reader, and complete tool-result delivery with zero pending calls. The
+final results SHA-256 is
+`ad72c1e994dc916320506823b948e8fde5766f146f028fb14283900fa0ddb332`,
+and the final manifest SHA-256 is
+`af20e5b9001cff6ae1dad53392767e13de6b2b53c1989f97d87aa4ed42913f1c`.
+
+The final manifest records the recovery truthfully as a single missing-only
+infrastructure retry, proves the source immutable, and proves it was not an
+independent full-matrix rerun. No test outcome was used to revise the prompt.
+The retry authorization is consumed and its active JSON record is absent from
+the branch tip.
 
 Any completed result is an **adaptive retest**, not a pristine held-out
 evaluation, because the 49-task partition was previously used by the retained

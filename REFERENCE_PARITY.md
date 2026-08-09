@@ -67,12 +67,13 @@ structured alltools schemas, evaluated model, reasoning, simulator, task
 matrix, step limit, authentication boundary, and empty developer instructions
 remain fixed.
 
-The first current-Sol attempt produced 48 reward-bearing trajectories and one
-no-reward infrastructure failure, so the fail-closed harness emitted no
-manifest and certified no score. Completing it requires a separately
-authorized, single missing-only recovery of the exact checkpoint. Any complete
-result on the frozen 49-task test partition is reused-holdout evidence rather
-than a pristine held-out result because the partition was used by the retained
-vanilla arm and retired demos. It is not comparable with the external
-terminal-use artifact. The previously disclosed exposure of `task_002` and
-`task_008` remains an additional contamination caveat.
+The final current-Sol adaptive retest scored 19/49 (38.7755%), versus 15/49
+(30.6122%) for the canonical alltools baseline. One original no-reward
+infrastructure row was replaced by a separately authorized, single
+missing-only retry; the final manifest proves the other 48 rows remained
+unchanged and that no independent full-matrix rerun occurred. This is
+reused-holdout evidence rather than a pristine held-out result because the
+partition was used by the retained vanilla arm and retired demos. It is not
+comparable with the external terminal-use artifact. The previously disclosed
+exposure of `task_002` and `task_008` remains an additional contamination
+caveat.

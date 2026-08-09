@@ -258,14 +258,21 @@ one-shot boundary are documented in
 [PROMPT_OPTIMIZATION.md](PROMPT_OPTIMIZATION.md). The previous optimized run
 was deleted as a superseded demo artifact and is not evidence for this prompt.
 
-The authorized 49-task, one-trial, concurrency-16 attempt
-`optimized-test-alltools-20260809T033050Z` completed 48 reward-bearing
-trajectories, but one trajectory ended in an infrastructure error after an
-empty agent message. The harness correctly refused to create a final manifest
-or report a partial score. All 49 adapter audits passed the authentication,
-model, prompt, capability, reroute, and tool-result-delivery gates. A complete
-score now requires a separately authorized single missing-only recovery; no
-retry authority is inferred from the original run.
+The final adaptive retest is
+`optimized-test-alltools-20260809T033050Z--recovery-bb161af26fd2`. It scored
+**19/49 (38.7755%)**, compared with the canonical alltools baseline's **15/49
+(30.6122%)**: four additional passes and an observed increase of 8.1633
+percentage points. All 49 trajectories ended with `user_stop`; all 1,495
+accepted dynamic-tool calls received their results; and all adapter audits
+passed the authentication, model, prompt, capability, reroute, and delivery
+gates.
+
+One original row failed before grading because the evaluated agent returned an
+empty message. A separately authorized recovery replaced exactly that missing
+row while cryptographically preserving the other 48. The final manifest
+classifies this truthfully as a single missing-only infrastructure retry, not
+an independent rerun. The one-shot authorization is consumed and its active
+JSON record has been removed from the branch tip.
 
 Any completed result must be labeled an adaptive retest because the same
 partition was used by the retained vanilla evaluation and retired demos. Only
@@ -283,8 +290,9 @@ source, validates the frozen matrix and provenance, skips completed rows, and
 uses an exclusive attempt claim and receipt to prevent a second attempt. See
 [authorizations/README.md](authorizations/README.md) for the full contract.
 
-No active recovery authorization record is present. Neither the implementation
-nor a failed local run can create retry authority.
+The one recovery authorization used by the final adaptive retest is consumed,
+and no active recovery authorization record is present. Neither the
+implementation nor a failed local run can create retry authority.
 
 ## Frozen test run
 
