@@ -133,7 +133,7 @@ not sufficient to authorize another prompt.
 - Bounded config:
   `experiments/optimized-test-alltools.toml`
 
-## Pre-evaluation integrity status
+## Integrity status
 
 The frozen prompt exactly matches the `<optimized_prompt>` section of the Sol
 output. Automated inspection found no task or trace IDs, private identifiers,
@@ -149,12 +149,33 @@ Codex-native capabilities, reroute detection, complete dynamic-tool delivery
 audits, incremental checkpointing, final manifests, and a 64 MiB app-server
 stream-reader limit.
 
-The current Sol prompt has not yet been evaluated. The authorized run is an
-**adaptive retest**, not a pristine held-out evaluation, because the 49-task
-partition was previously used by the retained vanilla evaluation and retired
-demo runs. The earlier infrastructure exposure of `task_002` and `task_008`
-remains an additional contamination caveat. Test outcomes may be reported only
-in aggregate and must never be used to revise this frozen prompt.
+The authorized adaptive retest started from clean commit
+`a829bd3f4bb79af2a6ae5129b970493434d3f38e` as
+`optimized-test-alltools-20260809T033050Z`. Forty-eight trajectories ended
+with `user_stop` and have binary rewards. One trajectory ended with
+`infrastructure_error` and no reward after the evaluated agent returned an
+empty `AssistantMessage` containing neither content nor a tool call. The
+harness therefore refused to create a manifest or certify a 49-task score.
+
+All 49 adapter audits still verified personal ChatGPT authentication,
+GPT-5.4/high, the frozen prompt hashes, no model reroute, no instruction-source
+injection, explicit empty developer instructions, no Codex-native capability
+event, the 64 MiB reader, and complete delivery of all 1,497 accepted
+dynamic-tool calls with zero pending results. The checkpoint SHA-256 is
+`0a8d8280b2d28866f85913bb6422d5dccee7a7922adecec69fa638c88797dee7`.
+
+No partial score is reported, and no test outcome was used to revise the
+prompt. Completing the matrix requires a separately authorized, single
+missing-only infrastructure retry of this exact immutable source run. Until
+that succeeds and the final manifest passes, the current Sol prompt has no
+certified eval-set score.
+
+Any completed result is an **adaptive retest**, not a pristine held-out
+evaluation, because the 49-task partition was previously used by the retained
+vanilla evaluation and retired demo runs. The earlier infrastructure exposure
+of `task_002` and `task_008` remains an additional contamination caveat. Test
+outcomes may be reported only in aggregate and must never be used to revise
+this frozen prompt.
 
 Nothing in this repository authorizes publication, upload, or leaderboard
 submission.

@@ -258,10 +258,18 @@ one-shot boundary are documented in
 [PROMPT_OPTIMIZATION.md](PROMPT_OPTIMIZATION.md). The previous optimized run
 was deleted as a superseded demo artifact and is not evidence for this prompt.
 
-The current prompt has not yet been evaluated. Its authorized 49-task,
-one-trial, concurrency-16 run must be labeled an adaptive retest because the
-same partition was used by the retained vanilla evaluation and retired demos.
-Only aggregate score, completion, and integrity fields may be inspected; test
+The authorized 49-task, one-trial, concurrency-16 attempt
+`optimized-test-alltools-20260809T033050Z` completed 48 reward-bearing
+trajectories, but one trajectory ended in an infrastructure error after an
+empty agent message. The harness correctly refused to create a final manifest
+or report a partial score. All 49 adapter audits passed the authentication,
+model, prompt, capability, reroute, and tool-result-delivery gates. A complete
+score now requires a separately authorized single missing-only recovery; no
+retry authority is inferred from the original run.
+
+Any completed result must be labeled an adaptive retest because the same
+partition was used by the retained vanilla evaluation and retired demos. Only
+aggregate score, completion, and integrity fields may be inspected; test
 trajectories and per-task outcomes must never become prompt feedback. The run
 authorizes no publication or submission.
 

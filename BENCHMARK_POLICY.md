@@ -39,10 +39,13 @@ matrices:
 The current `optimized-test-alltools` config pins a complete replacement system
 prompt authored only after the retained train run. Its train-only derivation,
 fixed path, and SHA-256 are recorded in `PROMPT_OPTIMIZATION.md`. The current
-optimized prompt has not been evaluated. A fresh authorization in the active
-task covers exactly its frozen 49-task, one-trial run at concurrency 16; it does
-not cover any other matrix or retry. Because the test partition was used by
-the retained vanilla arm and earlier retired demos, the run is an adaptive
+optimized attempt produced 48 reward-bearing rows and one no-reward
+infrastructure-failure row in
+`optimized-test-alltools-20260809T033050Z`; no manifest or score was certified.
+The original authorization is consumed and covers no retry. A single
+missing-only recovery requires fresh explicit authorization for that exact
+source and one attempt. Because the test partition was used by the retained
+vanilla arm and earlier retired demos, any completed result is an adaptive
 retest, not a pristine held-out run. In every case, test trajectories must not feed prompt optimization.
 
 Prior execution authority is consumed and does not cover a rerun, extra trial,

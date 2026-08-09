@@ -93,10 +93,13 @@ task_102
   after the fresh vanilla train run has completed. The prompt must be derived
   only from those train traces, then its repo-relative path and SHA-256 must be
   frozen before an evaluation. The current Sol prompt was produced once from
-  a leakage-safe export of the 48 train traces and has not yet been evaluated.
-  The active authorization covers exactly one 49-task, one-trial adaptive
-  retest at concurrency 16. It covers no retry, additional trial, or changed
-  prompt. The result cannot be described as a pristine held-out evaluation.
+  a leakage-safe export of the 48 train traces. Its first 49-task attempt,
+  `optimized-test-alltools-20260809T033050Z`, retained 48 reward-bearing rows
+  and one no-reward infrastructure-failure row, so no manifest or score was
+  certified. The original authorization is consumed and covers no retry. A
+  single missing-only recovery requires fresh explicit authorization for that
+  exact source and one attempt. Any result is an adaptive retest, not a
+  pristine held-out evaluation.
 - Do not commit raw runs, credentials, embedding caches, or large artifacts.
   The sole explicit exception is the already-published, credential-scanned
   Option A test file at
