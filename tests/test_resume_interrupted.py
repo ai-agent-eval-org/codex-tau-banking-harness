@@ -48,11 +48,10 @@ def _task(index: int) -> Task:
 def _prompt_spec() -> PromptSpec:
     return PromptSpec(
         mode=OPTIMIZED_PROMPT_MODE,
-        agent_instruction="synthetic instruction",
-        agent_instruction_sha256=PROMPT_SHA256,
         system_prompt="synthetic system prompt",
-        effective_system_prompt_sha256=SYSTEM_SHA256,
+        system_prompt_sha256=SYSTEM_SHA256,
         source_path="prompts/banking_knowledge/optimized.md",
+        source_file_sha256=PROMPT_SHA256,
     )
 
 
@@ -64,11 +63,10 @@ def _audit(task_id: str, seed: int) -> dict:
             "requires_openai_auth": True,
         },
         "adapter_stage": "stopped",
-        "agent_instruction_sha256": PROMPT_SHA256,
         "base_instructions_sha256": SYSTEM_SHA256,
         "developer_instructions_empty": True,
         "dynamic_call_count": 1,
-        "effective_system_prompt_sha256": SYSTEM_SHA256,
+        "system_prompt_sha256": SYSTEM_SHA256,
         "instruction_sources": [],
         "model": {
             "requested": "gpt-5.4",
@@ -82,6 +80,7 @@ def _audit(task_id: str, seed: int) -> dict:
         "pending_dynamic_call_count": 0,
         "prompt_mode": OPTIMIZED_PROMPT_MODE,
         "prompt_source_path": "prompts/banking_knowledge/optimized.md",
+        "prompt_source_file_sha256": PROMPT_SHA256,
         "simulation_seed": seed,
         "task_id": task_id,
         "tool_result_delivery_complete": True,
@@ -128,8 +127,8 @@ def _experiment(task_ids: tuple[str, ...]) -> dict:
         "task_partition": "test",
         "max_concurrency": 16,
         "task_ids": list(task_ids),
-        "agent_instruction_path": "prompts/banking_knowledge/optimized.md",
-        "agent_instruction_sha256": PROMPT_SHA256,
+        "system_prompt_path": "prompts/banking_knowledge/optimized.md",
+        "system_prompt_file_sha256": PROMPT_SHA256,
     }
 
 
@@ -185,8 +184,8 @@ def synthetic_case(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> SimpleNam
                 "repo_root": str(repo_root),
                 "audit_dir": str(audit_dir),
                 "prompt_mode": OPTIMIZED_PROMPT_MODE,
-                "agent_instruction_path": ("prompts/banking_knowledge/optimized.md"),
-                "agent_instruction_sha256": PROMPT_SHA256,
+                "system_prompt_path": "prompts/banking_knowledge/optimized.md",
+                "system_prompt_file_sha256": PROMPT_SHA256,
             },
         ),
         environment_info=EnvironmentInfo(
@@ -214,8 +213,8 @@ def synthetic_case(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> SimpleNam
         ),
         "source_info_sha256": recovery.canonical_sha256(info.model_dump(mode="json")),
         "experiment_config_sha256": recovery.sha256_path(experiment_path),
-        "agent_instruction_sha256": PROMPT_SHA256,
-        "effective_system_prompt_sha256": SYSTEM_SHA256,
+        "system_prompt_file_sha256": PROMPT_SHA256,
+        "system_prompt_sha256": SYSTEM_SHA256,
         "tool_schema_sha256": TOOL_SHA256,
         "expected_matrix_sha256": recovery.matrix_sha256(task_ids, (seed,)),
         "permitted_retry_count": 1,
@@ -287,8 +286,8 @@ def _append_retry(
 def _check() -> dict:
     return {
         "prompt_mode": OPTIMIZED_PROMPT_MODE,
+        "prompt_source_file_sha256": PROMPT_SHA256,
         "system_prompt_sha256": SYSTEM_SHA256,
-        "agent_instruction_sha256": PROMPT_SHA256,
         "tool_names": ["synthetic_tool"],
         "tool_schema_sha256": TOOL_SHA256,
         "rate_limit_ids": [],
@@ -734,8 +733,8 @@ def test_authorization_integer_fields_reject_booleans(
         "source_audit_set_sha256": "1" * 64,
         "source_info_sha256": "2" * 64,
         "experiment_config_sha256": "3" * 64,
-        "agent_instruction_sha256": "4" * 64,
-        "effective_system_prompt_sha256": "5" * 64,
+        "system_prompt_file_sha256": "4" * 64,
+        "system_prompt_sha256": "5" * 64,
         "tool_schema_sha256": "6" * 64,
         "expected_matrix_sha256": "7" * 64,
         "permitted_retry_count": 1,

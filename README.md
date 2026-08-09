@@ -39,26 +39,27 @@ returned to the official τ-bench orchestrator for execution. The tool named
 `shell` is therefore τ-bench's read-only `sandbox-runtime` tool, never Codex's
 native shell.
 
-The reference and vanilla arms read
+The alltools vanilla arms read
 [`prompts/banking_knowledge/baseline.md`](prompts/banking_knowledge/baseline.md)
-as their `AGENT_INSTRUCTION`. That file visibly mirrors τ-bench's canonical
-instruction; the loader removes its conventional final Markdown newline, then
-verifies fixed raw and normalized hashes. Parity tests prove the normalized
-bytes equal the pinned τ-bench constant. The loader renders that instruction
-through τ-bench's unmodified `SYSTEM_PROMPT` template and supplies an explicit
-empty developer-instruction string. There is no config-selectable baseline
-override. The reference profile uses τ-bench's `terminal_use` policy. The
-separately labeled alltools arms use τ-bench's unmodified `alltools` policy and
-toolkit, including its official BM25, dense-search, and shell tools.
+as the complete model-visible system prompt. That file contains the full
+`<instructions>` and `<policy>` rendering. Its raw file and model-visible
+hashes are fixed, and parity tests prove it equals the pinned τ-bench
+`SYSTEM_PROMPT` rendered with the canonical `AGENT_INSTRUCTION` and runtime
+alltools policy. Nothing is appended to it at runtime.
 
-The optimized-test arm is fail-closed around one substitution only. It reads
+The optimized arm reads
 [`prompts/banking_knowledge/optimized.md`](prompts/banking_knowledge/optimized.md)
-instead of `baseline.md` for `AGENT_INSTRUCTION`, and its experiment pins that
-artifact's SHA-256. The harness still renders τ-bench's unmodified
-`SYSTEM_PROMPT` with the authoritative runtime `alltools` domain policy. Custom
-policy text, alternate prompt paths, extra fields, and developer instructions
-are rejected. The train-only derivation and fixed hash are documented in
+as one complete replacement at the same abstraction level. Its experiment
+pins the exact repository path and raw file SHA-256. Alternate paths, extra
+config fields, and developer instructions are rejected. The structured
+alltools schemas remain separate, authoritative, and unmodified. The
+train-only derivation is documented in
 [PROMPT_OPTIMIZATION.md](PROMPT_OPTIMIZATION.md).
+
+The historical terminal-use reference profile still renders τ-bench's
+canonical instruction and its distinct terminal-use policy directly; it does
+not use the alltools artifact and remains a separately labeled comparability
+control.
 
 Compare the only model-visible instruction change directly:
 
@@ -227,27 +228,25 @@ Only after `vanilla-train-alltools` finished were its 48 saved trajectories
 read for prompt work. The method was a single generalizing reflection pass,
 inspired by research such as GEPA but not an execution of GEPA: there was no
 iterative search, candidate loop, or validation-guided selection. The train
-traces were inspected once, one task-level `AGENT_INSTRUCTION` revision was
-written, its SHA-256 was pinned in the separately named
-`optimized-test-alltools` config, and both artifacts were frozen before the
-49-task test ran once.
+traces were inspected once and one complete `<instructions>` plus `<policy>`
+replacement was written. The previous instruction-only prompt and its local
+optimized results were retired as demo artifacts.
 
-Do not inspect the vanilla or optimized test trajectories for prompt feedback.
-The frozen artifact, its derivation report, and the bounded config are
-present. The harness rejects the optimized experiment if its fixed path or hash
-changes. The retained reproducibility commands are:
+Do not inspect test trajectories for prompt feedback. The current full prompt,
+its derivation report, and a bounded config are present. The harness rejects the
+optimized experiment if its fixed path or hash changes. These commands are
+reproducibility recipes, not execution authority:
 
 ```bash
 uv run codex-tau preflight experiments/optimized-test-alltools.toml
 uv run codex-tau run experiments/optimized-test-alltools.toml
 ```
 
-The aggregate-only outcomes are recorded in
-[PROMPT_OPTIMIZATION.md](PROMPT_OPTIMIZATION.md). The completed optimized arm
-scored 23/49 (46.9388%) versus the vanilla held-out arm's 15/49 (30.6122%), an
-observed single-trial difference of 8 passes and 16.3265 percentage points.
-This is not proof of causality or general performance, and the standing
-contamination and non-publication caveats apply.
+The current full optimized prompt has not been evaluated. Because the same test
+partition was used by the earlier demo, a future run on it would be an adaptive
+retest rather than a pristine held-out evaluation and requires fresh explicit
+authorization and disclosure. See
+[PROMPT_OPTIMIZATION.md](PROMPT_OPTIMIZATION.md).
 
 ### Consumed interrupted-run recovery
 
@@ -259,9 +258,8 @@ source, validates the frozen matrix and provenance, skips completed rows, and
 uses an exclusive attempt claim and receipt to prevent a second attempt. See
 [authorizations/README.md](authorizations/README.md) for the full contract.
 
-The Trial B record is consumed and terminal. Its completed retry authorizes no
-additional model work; neither the implementation nor a failed local run can
-create retry authority.
+No active recovery authorization record is present. Neither the implementation
+nor a failed local run can create retry authority.
 
 ## Frozen test run
 
@@ -304,9 +302,9 @@ submitted. The standing non-submission rule in
 [BENCHMARK_POLICY.md](BENCHMARK_POLICY.md) applies to every run. This repository
 intentionally contains no submission path.
 
-Every completed trajectory audit must independently match the effective prompt
-hash and instruction hash, personal ChatGPT account, GPT-5.4/high catalog and
-thread model, no reroute, no instruction sources, explicit empty developer
-instructions, no Codex-native capability event, and exact accepted-versus-
-returned dynamic-tool counts with zero pending results. Manifest generation
-fails if any trajectory misses one of these checks.
+Every completed trajectory audit must independently match the complete system-
+prompt hash, personal ChatGPT account, GPT-5.4/high catalog and thread model,
+no reroute, no instruction sources, explicit empty developer instructions, no
+Codex-native capability event, and exact accepted-versus-returned dynamic-tool
+counts with zero pending results. Manifest generation fails if any trajectory
+misses one of these checks.

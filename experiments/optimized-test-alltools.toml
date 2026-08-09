@@ -13,8 +13,8 @@ max_steps = 200
 max_errors = 10
 task_partition = "test"
 max_concurrency = 16
-agent_instruction_path = "prompts/banking_knowledge/optimized.md"
-agent_instruction_sha256 = "dddd25c976a631e2559c6afefc90582328ae0ca9bc78be07e565ea53e47717c9"
+system_prompt_path = "prompts/banking_knowledge/optimized.md"
+system_prompt_file_sha256 = "e113c6ef7a8e0ee829089bd57c08d65bc9bc9c2fe76ad96e7f8c7c993d0c559e"
 task_ids = [
   "task_002",
   "task_008",

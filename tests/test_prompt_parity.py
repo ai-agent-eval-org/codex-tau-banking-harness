@@ -10,11 +10,11 @@ from tau2.agent.llm_agent import AGENT_INSTRUCTION, SYSTEM_PROMPT
 
 from codex_tau.auth import resolve_codex_command, sanitized_child_environment
 from codex_tau.prompt import (
-    BASELINE_AGENT_INSTRUCTION_FILE_SHA256,
-    BASELINE_AGENT_INSTRUCTION_PATH,
-    STANDARD_AGENT_INSTRUCTION_SHA256,
+    BASELINE_SYSTEM_PROMPT_FILE_SHA256,
+    BASELINE_SYSTEM_PROMPT_PATH,
+    BASELINE_SYSTEM_PROMPT_SHA256,
     PromptError,
-    baseline_agent_instruction,
+    baseline_system_prompt,
     prompt_hash,
     standard_prompt_spec,
     standard_system_prompt,
@@ -30,18 +30,10 @@ def test_system_prompt_is_exactly_tau2_standard() -> None:
         agent_instruction=AGENT_INSTRUCTION,
         domain_policy=policy,
     )
-    artifact = REPO_ROOT / BASELINE_AGENT_INSTRUCTION_PATH
-    assert prompt_hash(artifact.read_bytes()) == (
-        BASELINE_AGENT_INSTRUCTION_FILE_SHA256
-    )
-    assert baseline_agent_instruction(REPO_ROOT) == AGENT_INSTRUCTION
     assert standard_system_prompt(
         repo_root=REPO_ROOT,
         domain_policy=policy,
     ) == expected
-    assert STANDARD_AGENT_INSTRUCTION_SHA256 == prompt_hash(
-        AGENT_INSTRUCTION.encode()
-    )
 
 
 def test_reference_profile_has_no_custom_prompt_override() -> None:
@@ -52,30 +44,37 @@ def test_reference_profile_has_no_custom_prompt_override() -> None:
         "vanilla-test-alltools",
     ):
         experiment = (REPO_ROOT / f"experiments/{name}.toml").read_text()
-        assert "agent_instruction_path" not in experiment
-        assert "agent_instruction_sha256" not in experiment
+        assert "system_prompt_path" not in experiment
+        assert "system_prompt_file_sha256" not in experiment
         assert "developer_instructions" not in experiment
 
 
 def test_alltools_vanilla_prompt_is_canonical_tau2_bytes() -> None:
     _, policy = _alltools_contract()
     spec = standard_prompt_spec(repo_root=REPO_ROOT, domain_policy=policy)
-    assert spec.system_prompt == SYSTEM_PROMPT.format(
+    expected = SYSTEM_PROMPT.format(
         agent_instruction=AGENT_INSTRUCTION,
         domain_policy=policy,
     )
-    assert spec.source_path == BASELINE_AGENT_INSTRUCTION_PATH.as_posix()
+    artifact = REPO_ROOT / BASELINE_SYSTEM_PROMPT_PATH
+    assert prompt_hash(artifact.read_bytes()) == BASELINE_SYSTEM_PROMPT_FILE_SHA256
+    assert prompt_hash(expected.encode()) == BASELINE_SYSTEM_PROMPT_SHA256
+    assert baseline_system_prompt(REPO_ROOT) == expected
+    assert spec.system_prompt == expected
+    assert spec.system_prompt_sha256 == BASELINE_SYSTEM_PROMPT_SHA256
+    assert spec.source_path == BASELINE_SYSTEM_PROMPT_PATH.as_posix()
+    assert spec.source_file_sha256 == BASELINE_SYSTEM_PROMPT_FILE_SHA256
 
 
 def test_baseline_artifact_change_fails_closed(tmp_path: Path) -> None:
-    artifact = tmp_path / BASELINE_AGENT_INSTRUCTION_PATH
+    artifact = tmp_path / BASELINE_SYSTEM_PROMPT_PATH
     artifact.parent.mkdir(parents=True)
-    artifact.write_bytes((REPO_ROOT / BASELINE_AGENT_INSTRUCTION_PATH).read_bytes())
-    assert baseline_agent_instruction(tmp_path) == AGENT_INSTRUCTION
+    artifact.write_bytes((REPO_ROOT / BASELINE_SYSTEM_PROMPT_PATH).read_bytes())
+    assert baseline_system_prompt(tmp_path) == baseline_system_prompt(REPO_ROOT)
 
     artifact.write_text("changed\n")
     with pytest.raises(PromptError, match="SHA-256 is not canonical"):
-        baseline_agent_instruction(tmp_path)
+        baseline_system_prompt(tmp_path)
 
 
 def test_codex_adds_no_model_visible_context(tmp_path: Path) -> None:

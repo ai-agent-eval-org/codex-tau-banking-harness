@@ -48,14 +48,15 @@ task_102
 ## Experimental hygiene
 
 - Prompt optimization, human labeling, failure analysis, and trajectory review
-  may use train tasks only. For the completed one-shot prompt pass, the only
+  may use train tasks only. For the current one-shot full-prompt pass, the only
   optimization evidence was the fresh `vanilla-train-alltools` run produced by
   this harness. The earlier pilots and all test trajectories were excluded.
-- The completed one-shot pass was methodologically inspired by prompt-reflection
+- The one-shot pass was methodologically inspired by prompt-reflection
   research, including GEPA, but it was not GEPA: there was no iterative
   optimizer, candidate search, selection loop, or evaluation-feedback cycle.
-  The complete fresh train traces were read once, one general task-level
-  revision was frozen, and optimization stopped before the optimized test run.
+  The complete fresh train traces were read once and one general full-system-
+  prompt revision was frozen. The retired instruction-only demo prompt and its
+  ignored local results are not evidence for the current prompt.
 - Freeze the prompt and harness before a test run. Test outcomes may be used
   only for an aggregate evaluation report, never as feedback for the next
   prompt. If test feedback influences development, disclose that the test set
@@ -71,14 +72,16 @@ task_102
   for evaluated Codex inference.
 - A custom or optimized prompt is a separately named experiment and must never
   be represented as reference-comparable. The reference and vanilla profiles
-  load the fixed `prompts/banking_knowledge/baseline.md` mirror of τ-bench's
-  canonical `AGENT_INSTRUCTION`; its raw and normalized hashes are fixed and
-  parity-tested against the pinned submodule. They have no configurable prompt
-  override or additional developer instructions. The completed optimized form
-  replaces only `AGENT_INSTRUCTION` from the fixed, repo-relative UTF-8 path
-  `prompts/banking_knowledge/optimized.md`, pinned by SHA-256,
-  while rendering the unmodified τ-bench `SYSTEM_PROMPT` with the authoritative
-  `alltools` policy. Additional developer instructions are forbidden.
+  have no configurable prompt override or additional developer instructions.
+  All alltools vanilla runs load the complete
+  `prompts/banking_knowledge/baseline.md` artifact; its raw and model-visible
+  hashes are fixed and parity-tested against the pinned τ-bench
+  `SYSTEM_PROMPT`, canonical `AGENT_INSTRUCTION`, and runtime alltools policy.
+  The optimized form loads the complete system prompt from the fixed,
+  repo-relative UTF-8 path `prompts/banking_knowledge/optimized.md`, pinned by
+  raw file SHA-256. No hidden policy is appended. Structured τ-bench tool
+  schemas remain separate and unmodified. Additional developer instructions
+  are forbidden.
 - An experiment config or runtime allowlist entry is a reproducibility control,
   not execution authority. Every model-bearing run requires fresh, explicit
   human authorization for its exact task IDs, trials, concurrency, and expected
@@ -86,19 +89,20 @@ task_102
   consumed. Concurrency 16 is the validated maximum; do not increase it without
   a separately authorized, bounded fixed-matrix scaling validation. Never run
   one combined 97-task matrix or submit to a leaderboard.
-- The optimized prompt artifact and experiment config may be authored only
+- An optimized prompt artifact and experiment config may be authored only
   after the fresh vanilla train run has completed. The prompt must be derived
-  only from those train traces, then its repo-relative path and SHA-256 must
-  remain fixed before and after the optimized test.
+  only from those train traces, then its repo-relative path and SHA-256 must be
+  frozen before an evaluation. The current full prompt has not been evaluated.
+  Any future run on the already-used test partition is an adaptive retest, not
+  a pristine held-out evaluation, and must be disclosed as such.
 - Do not commit raw runs, credentials, embedding caches, or large artifacts.
 - The presence of `resume-interrupted` implementation is not authorization to
   execute it. An interrupted trajectory may be retried only after fresh,
   explicit human authorization for that exact source run and one retry, encoded
   in the exact hash-pinned record documented under `authorizations/`, committed
-  with a clean harness. The exact Trial B record was consumed by its one
-  successful missing-only retry and is terminal; it authorizes no additional
-  attempt. Never infer, generate, or activate retry authority from the
-  implementation, a consumed record, or the existence of a failed local run.
+  with a clean harness. No active recovery record is present. Never infer,
+  generate, or activate retry authority from the implementation or the
+  existence of a failed local run.
 - Preserve the held-out contamination disclosure recorded in
   `REFERENCE_PARITY.md` and `PROMPT_OPTIMIZATION.md` in every future claim.
   Never use pilot or test diagnostics for prompt optimization.

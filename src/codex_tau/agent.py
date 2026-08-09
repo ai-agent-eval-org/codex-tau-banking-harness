@@ -69,14 +69,10 @@ class CodexTauAgent(HalfDuplexAgent[CodexAgentState]):
         )
         self.runtime.audit.update(
             {
-                "agent_instruction_sha256": (
-                    prompt_spec.agent_instruction_sha256
-                ),
-                "effective_system_prompt_sha256": (
-                    prompt_spec.effective_system_prompt_sha256
-                ),
+                "system_prompt_sha256": prompt_spec.system_prompt_sha256,
                 "prompt_mode": prompt_spec.mode,
                 "prompt_source_path": prompt_spec.source_path,
+                "prompt_source_file_sha256": prompt_spec.source_file_sha256,
                 "task_id": task_id,
             }
         )
@@ -194,19 +190,19 @@ def create_codex_tau_agent(
             "repo_root",
             "audit_dir",
             "prompt_mode",
-            "agent_instruction_path",
-            "agent_instruction_sha256",
+            "system_prompt_path",
+            "system_prompt_file_sha256",
         }:
             raise ValueError("the optimized agent accepts only its fixed llm_args")
-        prompt_path = llm_args.get("agent_instruction_path")
-        prompt_sha256 = llm_args.get("agent_instruction_sha256")
+        prompt_path = llm_args.get("system_prompt_path")
+        prompt_sha256 = llm_args.get("system_prompt_file_sha256")
         if not isinstance(prompt_path, str) or not isinstance(prompt_sha256, str):
             raise ValueError("the optimized prompt requires a path and SHA-256")
         prompt_spec = optimized_prompt_spec(
             repo_root=repo_root,
             domain_policy=domain_policy,
             relative_path=prompt_path,
-            expected_sha256=prompt_sha256,
+            expected_file_sha256=prompt_sha256,
         )
     else:
         raise ValueError(f"unknown prompt mode: {prompt_mode!r}")

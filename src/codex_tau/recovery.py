@@ -31,9 +31,7 @@ RESUME_AUTHORIZATION_RELATIVE_PATH = Path("authorizations/resume-interrupted.jso
 RECOVERY_EVIDENCE_DIR = "recovery-evidence"
 
 _AUTHORIZATION_KEYS = {
-    "agent_instruction_sha256",
     "authorization_type",
-    "effective_system_prompt_sha256",
     "expected_matrix_sha256",
     "experiment",
     "experiment_config_sha256",
@@ -44,6 +42,8 @@ _AUTHORIZATION_KEYS = {
     "source_info_sha256",
     "source_results_sha256",
     "source_run_basename",
+    "system_prompt_file_sha256",
+    "system_prompt_sha256",
     "tool_schema_sha256",
 }
 _SHA256_PATTERN = re.compile(r"[0-9a-f]{64}")
@@ -426,7 +426,7 @@ def require_execution_inputs_at_commits(
     _git_output(
         repo_root, "merge-base", "--is-ancestor", source_commit, resume_harness_commit
     )
-    prompt_path = repo_root / experiment["agent_instruction_path"]
+    prompt_path = repo_root / experiment["system_prompt_path"]
     for commit in (source_commit, resume_harness_commit):
         require_head_regular_file(
             repo_root,
@@ -437,7 +437,7 @@ def require_execution_inputs_at_commits(
         require_head_regular_file(
             repo_root,
             prompt_path,
-            authorization["agent_instruction_sha256"],
+            authorization["system_prompt_file_sha256"],
             commit=commit,
         )
 
@@ -500,8 +500,8 @@ def _validate_source_info(
         "repo_root": str(repo_root),
         "audit_dir": str(source_dir / "adapter-audits"),
         "prompt_mode": OPTIMIZED_PROMPT_MODE,
-        "agent_instruction_path": experiment["agent_instruction_path"],
-        "agent_instruction_sha256": experiment["agent_instruction_sha256"],
+        "system_prompt_path": experiment["system_prompt_path"],
+        "system_prompt_file_sha256": experiment["system_prompt_file_sha256"],
     }
     checks = (
         info.git_commit == authorization["source_harness_commit"],
@@ -624,10 +624,9 @@ def inspect_resume_source(
     policy = results.info.environment_info.policy
     prompt_spec = harness._prompt_spec_for(experiment, policy)
     if (
-        prompt_spec.agent_instruction_sha256
-        != authorization["agent_instruction_sha256"]
-        or prompt_spec.effective_system_prompt_sha256
-        != authorization["effective_system_prompt_sha256"]
+        prompt_spec.source_file_sha256
+        != authorization["system_prompt_file_sha256"]
+        or prompt_spec.system_prompt_sha256 != authorization["system_prompt_sha256"]
     ):
         raise ResumeError("authorized prompt digests do not match")
     tools, current_policy = harness._retrieval_contract(experiment["retrieval"])
@@ -1287,9 +1286,9 @@ def resume_interrupted(experiment_path: Path, source_run_dir: Path) -> Path:
     )
     check = harness.preflight(resolved_experiment_path)
     if (
-        check["system_prompt_sha256"] != authorization["effective_system_prompt_sha256"]
-        or check["agent_instruction_sha256"]
-        != authorization["agent_instruction_sha256"]
+        check["prompt_source_file_sha256"]
+        != authorization["system_prompt_file_sha256"]
+        or check["system_prompt_sha256"] != authorization["system_prompt_sha256"]
         or check["tool_schema_sha256"] != authorization["tool_schema_sha256"]
     ):
         raise ResumeError("preflight differs from the committed authorization")

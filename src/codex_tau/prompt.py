@@ -1,4 +1,4 @@
-"""Fail-closed prompt construction through tau2's unmodified template."""
+"""Fail-closed loading of complete model-visible system-prompt artifacts."""
 
 from __future__ import annotations
 
@@ -8,21 +8,17 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from tau2.agent.llm_agent import SYSTEM_PROMPT
+from tau2.agent.llm_agent import AGENT_INSTRUCTION, SYSTEM_PROMPT
 
-STANDARD_PROMPT_MODE = "tau2_standard_llm_agent"
-OPTIMIZED_PROMPT_MODE = "train_trace_one_shot_agent_instruction"
-BASELINE_AGENT_INSTRUCTION_PATH = Path(
-    "prompts/banking_knowledge/baseline.md"
+STANDARD_PROMPT_MODE = "tau2_canonical_system_prompt"
+OPTIMIZED_PROMPT_MODE = "train_trace_one_shot_full_system_prompt"
+BASELINE_SYSTEM_PROMPT_PATH = Path("prompts/banking_knowledge/baseline.md")
+OPTIMIZED_SYSTEM_PROMPT_PATH = Path("prompts/banking_knowledge/optimized.md")
+BASELINE_SYSTEM_PROMPT_FILE_SHA256 = (
+    "c51896d46edd67711f8288735462b104202d4b250609ced2e5c16ded52ba90c3"
 )
-OPTIMIZED_AGENT_INSTRUCTION_PATH = Path(
-    "prompts/banking_knowledge/optimized.md"
-)
-BASELINE_AGENT_INSTRUCTION_FILE_SHA256 = (
-    "89c128e25653ff963dca98a0a022f3c43c009a7e499f29025c81ce9c6c1be7fd"
-)
-STANDARD_AGENT_INSTRUCTION_SHA256 = (
-    "e00faa515230c8648931f73ed25c9528418cccc522fe8936917f4c2a047bc5d2"
+BASELINE_SYSTEM_PROMPT_SHA256 = (
+    "40e0c2afebb858e37b99b3dffcaba2cf1f2d48ad26908612fd4b5756d4899780"
 )
 _SHA256 = re.compile(r"[0-9a-f]{64}")
 
@@ -36,11 +32,10 @@ class PromptSpec:
     """Resolved model-visible prompt bytes and their provenance."""
 
     mode: str
-    agent_instruction: str
-    agent_instruction_sha256: str
     system_prompt: str
-    effective_system_prompt_sha256: str
+    system_prompt_sha256: str
     source_path: str | None
+    source_file_sha256: str | None
 
 
 def prompt_hash(data: bytes) -> str:
@@ -65,95 +60,102 @@ def _read_fixed_artifact(
     return resolved_artifact.read_bytes()
 
 
-def baseline_agent_instruction(repo_root: Path) -> str:
-    """Load the visible baseline artifact and verify canonical τ-bench bytes."""
-    artifact_bytes = _read_fixed_artifact(
-        repo_root=repo_root,
-        relative_path=BASELINE_AGENT_INSTRUCTION_PATH,
-        label="baseline",
-    )
-    artifact_sha256 = prompt_hash(artifact_bytes)
-    if not hmac.compare_digest(
-        artifact_sha256, BASELINE_AGENT_INSTRUCTION_FILE_SHA256
-    ):
-        raise PromptError("baseline prompt artifact SHA-256 is not canonical")
+def _decode_prompt_file(artifact_bytes: bytes, *, label: str) -> str:
     try:
         artifact_text = artifact_bytes.decode("utf-8")
     except UnicodeDecodeError as exc:
-        raise PromptError("baseline prompt artifact must be valid UTF-8") from exc
+        raise PromptError(f"{label} prompt artifact must be valid UTF-8") from exc
+    # The Markdown artifact conventionally ends in LF; that separator is not sent.
+    system_prompt = artifact_text.removesuffix("\n")
+    if not system_prompt.strip():
+        raise PromptError(f"{label} prompt artifact must be nonempty")
+    return system_prompt
 
-    # Markdown files conventionally end in LF; τ-bench's stripped constant does not.
-    agent_instruction = artifact_text.removesuffix("\n")
-    if prompt_hash(agent_instruction.encode()) != STANDARD_AGENT_INSTRUCTION_SHA256:
-        raise PromptError("baseline prompt content is not canonical τ-bench bytes")
-    return agent_instruction
+
+def baseline_system_prompt(repo_root: Path) -> str:
+    """Load and verify the visible canonical alltools system prompt."""
+    artifact_bytes = _read_fixed_artifact(
+        repo_root=repo_root,
+        relative_path=BASELINE_SYSTEM_PROMPT_PATH,
+        label="baseline",
+    )
+    if not hmac.compare_digest(
+        prompt_hash(artifact_bytes), BASELINE_SYSTEM_PROMPT_FILE_SHA256
+    ):
+        raise PromptError("baseline prompt artifact SHA-256 is not canonical")
+    system_prompt = _decode_prompt_file(artifact_bytes, label="baseline")
+    if prompt_hash(system_prompt.encode()) != BASELINE_SYSTEM_PROMPT_SHA256:
+        raise PromptError("baseline prompt content is not canonical alltools bytes")
+    return system_prompt
 
 
-def render_system_prompt(domain_policy: str, agent_instruction: str) -> str:
-    """Render only the two substitutions supported by tau2's SYSTEM_PROMPT."""
+def render_canonical_system_prompt(domain_policy: str) -> str:
+    """Render τ-bench's pinned canonical prompt for a runtime policy."""
     return SYSTEM_PROMPT.format(
         domain_policy=domain_policy,
-        agent_instruction=agent_instruction,
+        agent_instruction=AGENT_INSTRUCTION,
     )
 
 
 def standard_system_prompt(*, repo_root: Path, domain_policy: str) -> str:
-    """Return the byte-identical prompt used by tau2's standard LLMAgent."""
-    return render_system_prompt(domain_policy, baseline_agent_instruction(repo_root))
+    """Use the full alltools artifact or exact τ-bench reference rendering."""
+    rendered = render_canonical_system_prompt(domain_policy)
+    baseline = baseline_system_prompt(repo_root)
+    return baseline if hmac.compare_digest(rendered, baseline) else rendered
 
 
 def standard_prompt_spec(*, repo_root: Path, domain_policy: str) -> PromptSpec:
-    agent_instruction = baseline_agent_instruction(repo_root)
-    system_prompt = render_system_prompt(domain_policy, agent_instruction)
+    rendered = render_canonical_system_prompt(domain_policy)
+    baseline = baseline_system_prompt(repo_root)
+    uses_artifact = hmac.compare_digest(rendered, baseline)
+    system_prompt = baseline if uses_artifact else rendered
     return PromptSpec(
         mode=STANDARD_PROMPT_MODE,
-        agent_instruction=agent_instruction,
-        agent_instruction_sha256=STANDARD_AGENT_INSTRUCTION_SHA256,
         system_prompt=system_prompt,
-        effective_system_prompt_sha256=prompt_hash(system_prompt.encode()),
-        source_path=BASELINE_AGENT_INSTRUCTION_PATH.as_posix(),
+        system_prompt_sha256=prompt_hash(system_prompt.encode()),
+        source_path=(
+            BASELINE_SYSTEM_PROMPT_PATH.as_posix() if uses_artifact else None
+        ),
+        source_file_sha256=(
+            BASELINE_SYSTEM_PROMPT_FILE_SHA256 if uses_artifact else None
+        ),
     )
 
 
 def optimized_prompt_spec(
     *,
     repo_root: Path,
-    domain_policy: str,
+    domain_policy: str | None,
     relative_path: str,
-    expected_sha256: str,
+    expected_file_sha256: str,
 ) -> PromptSpec:
-    """Load one pinned UTF-8 AGENT_INSTRUCTION replacement from the repository."""
-    expected_path = OPTIMIZED_AGENT_INSTRUCTION_PATH.as_posix()
+    """Load one pinned complete alltools system-prompt replacement."""
+    expected_path = OPTIMIZED_SYSTEM_PROMPT_PATH.as_posix()
     if relative_path != expected_path:
-        raise PromptError(
-            f"optimized prompt path must be exactly {expected_path!r}"
-        )
-    if _SHA256.fullmatch(expected_sha256) is None:
+        raise PromptError(f"optimized prompt path must be exactly {expected_path!r}")
+    if _SHA256.fullmatch(expected_file_sha256) is None:
         raise PromptError("optimized prompt SHA-256 must be 64 lowercase hex digits")
+
+    if domain_policy is not None:
+        canonical = render_canonical_system_prompt(domain_policy)
+        if not hmac.compare_digest(canonical, baseline_system_prompt(repo_root)):
+            raise PromptError("optimized prompt is restricted to the alltools policy")
 
     artifact_bytes = _read_fixed_artifact(
         repo_root=repo_root,
-        relative_path=OPTIMIZED_AGENT_INSTRUCTION_PATH,
+        relative_path=OPTIMIZED_SYSTEM_PROMPT_PATH,
         label="optimized",
     )
-    actual_sha256 = prompt_hash(artifact_bytes)
-    if not hmac.compare_digest(actual_sha256, expected_sha256):
+    actual_file_sha256 = prompt_hash(artifact_bytes)
+    if not hmac.compare_digest(actual_file_sha256, expected_file_sha256):
         raise PromptError(
             "optimized prompt artifact SHA-256 does not match the experiment"
         )
-    try:
-        agent_instruction = artifact_bytes.decode("utf-8")
-    except UnicodeDecodeError as exc:
-        raise PromptError("optimized prompt artifact must be valid UTF-8") from exc
-    if not agent_instruction.strip():
-        raise PromptError("optimized prompt artifact must be nonempty")
-
-    system_prompt = render_system_prompt(domain_policy, agent_instruction)
+    system_prompt = _decode_prompt_file(artifact_bytes, label="optimized")
     return PromptSpec(
         mode=OPTIMIZED_PROMPT_MODE,
-        agent_instruction=agent_instruction,
-        agent_instruction_sha256=actual_sha256,
         system_prompt=system_prompt,
-        effective_system_prompt_sha256=prompt_hash(system_prompt.encode()),
+        system_prompt_sha256=prompt_hash(system_prompt.encode()),
         source_path=expected_path,
+        source_file_sha256=actual_file_sha256,
     )

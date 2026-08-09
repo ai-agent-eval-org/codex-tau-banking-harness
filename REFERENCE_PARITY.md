@@ -19,7 +19,7 @@ source configuration cannot be reconstructed.
 | Retrieval | terminal_use | terminal_use |
 | Maximum steps | 200 | 200 |
 | Maximum consecutive errors | 10 | 10 |
-| Agent prompt | Standard τ-bench `LLMAgent` | Visible `baseline.md` mirror; exact same constructor and bytes |
+| Agent prompt | Standard τ-bench `LLMAgent` | Exact same canonical constructor and bytes |
 | Extra Codex instructions | Not applicable | Explicitly disabled |
 | Codex-native tools | Not applicable | Omitted; only τ-bench dynamic tools |
 
@@ -50,26 +50,25 @@ The reference profile is therefore a controlled current-v1.0.1 comparison, not
 an exact reproduction of the March artifact. Any score comparison must retain
 that qualification.
 
-## Fresh alltools and optimized arms
+## Alltools prompt-study arms
 
-The `vanilla-train-alltools` and `vanilla-test-alltools` experiments preserve
-the canonical τ-bench agent instruction and `SYSTEM_PROMPT` rendering, but use
-the `alltools` retrieval policy and toolkit. They are internal baselines for the
-prompt study, not extensions of the terminal-use reference profile and not
-reference-comparable.
+The `vanilla-train-alltools` and `vanilla-test-alltools` experiments use the
+canonical τ-bench alltools prompt and toolkit. Their complete model-visible
+prompt is exposed byte-for-byte in `prompts/banking_knowledge/baseline.md` and
+parity-tested against the pinned τ-bench constructor and runtime policy. They
+are internal baselines for the prompt study, not extensions of the terminal-use
+reference profile and not reference-comparable.
 
-The completed `optimized-test-alltools` arm differed again by replacing only
-the `AGENT_INSTRUCTION` substitution with one path-and-hash-pinned artifact
-derived in a single pass from fresh vanilla train traces. τ-bench's
-`SYSTEM_PROMPT`, authoritative alltools domain policy, tools, model, reasoning,
-simulator, task IDs, trial count, step limit, and concurrency remained fixed,
-with no additional developer instructions. One original no-reward
-infrastructure failure was recovered through an exact, original-seed,
-missing-only retry; 48 completed rows and audits were preserved and skipped.
+The current optimized artifact is a path-and-hash-pinned replacement for the
+complete textual alltools system prompt, including both `<instructions>` and
+`<policy>`. It was derived in one pass from the 48 retained train traces. The
+structured alltools schemas, model, reasoning, simulator, task matrix, step
+limit, authentication boundary, and empty developer instructions remain
+fixed.
 
-The recovered optimized arm scored 23/49 (46.9388%), while the fresh alltools
-vanilla test arm scored 15/49 (30.6122%). That observed single-trial difference
-is comparable only within this local alltools methodology. It is not proof of
-causality or general performance and is not comparable with the external
-terminal-use artifact. The previously disclosed exposure of `task_002` and
-`task_008` remains a contamination caveat for held-out interpretation.
+The current full optimized prompt has not been evaluated. A future run on the
+same 49-task test partition would be an adaptive retest because the partition
+was previously used for the retired demo. It cannot be described as a pristine
+held-out result and is not comparable with the external terminal-use artifact.
+The previously disclosed exposure of `task_002` and `task_008` remains an
+additional contamination caveat.

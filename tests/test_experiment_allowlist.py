@@ -41,7 +41,7 @@ def test_exact_vanilla_matrix_rejects_changes(
     "extra",
     [
         'developer_instructions = "extra"',
-        'agent_instruction_path = "prompts/banking_knowledge/prompt.md"',
+        'system_prompt_path = "prompts/banking_knowledge/prompt.md"',
         'custom_prompt = "text"',
     ],
 )
@@ -67,13 +67,13 @@ def test_experiment_filename_must_match_fixed_name(tmp_path: Path) -> None:
     ("old", "new"),
     [
         (
-            'agent_instruction_path = "prompts/banking_knowledge/optimized.md"',
-            'agent_instruction_path = "prompts/banking_knowledge/other.md"',
+            'system_prompt_path = "prompts/banking_knowledge/optimized.md"',
+            'system_prompt_path = "prompts/banking_knowledge/other.md"',
         ),
         (
-            'agent_instruction_sha256 = '
-            '"dddd25c976a631e2559c6afefc90582328ae0ca9bc78be07e565ea53e47717c9"',
-            'agent_instruction_sha256 = '
+            'system_prompt_file_sha256 = '
+            '"e113c6ef7a8e0ee829089bd57c08d65bc9bc9c2fe76ad96e7f8c7c993d0c559e"',
+            'system_prompt_file_sha256 = '
             '"0000000000000000000000000000000000000000000000000000000000000000"',
         ),
     ],

@@ -239,8 +239,8 @@ def load_experiment(path: Path) -> dict[str, Any]:
             )
     else:
         optimized_keys = _BASE_EXPERIMENT_KEYS | {
-            "agent_instruction_path",
-            "agent_instruction_sha256",
+            "system_prompt_path",
+            "system_prompt_file_sha256",
         }
         if set(experiment) != optimized_keys:
             raise ExperimentError(
@@ -250,9 +250,9 @@ def load_experiment(path: Path) -> dict[str, Any]:
         try:
             optimized_prompt_spec(
                 repo_root=_repo_root(),
-                domain_policy="",
-                relative_path=experiment["agent_instruction_path"],
-                expected_sha256=experiment["agent_instruction_sha256"],
+                domain_policy=None,
+                relative_path=experiment["system_prompt_path"],
+                expected_file_sha256=experiment["system_prompt_file_sha256"],
             )
         except (KeyError, TypeError, ValueError, PromptError) as exc:
             raise ExperimentError("optimized prompt fields are malformed") from exc
@@ -293,8 +293,8 @@ def _prompt_spec_for(experiment: dict[str, Any], domain_policy: str) -> PromptSp
     return optimized_prompt_spec(
         repo_root=_repo_root(),
         domain_policy=domain_policy,
-        relative_path=experiment["agent_instruction_path"],
-        expected_sha256=experiment["agent_instruction_sha256"],
+        relative_path=experiment["system_prompt_path"],
+        expected_file_sha256=experiment["system_prompt_file_sha256"],
     )
 
 
@@ -305,26 +305,16 @@ def _validate_runtime_audit(
     require_tool_delivery: bool,
 ) -> None:
     """Verify every model, prompt, auth, and capability boundary in one audit."""
-    expected_hash = prompt_spec.effective_system_prompt_sha256
+    expected_hash = prompt_spec.system_prompt_sha256
     if audit.get("base_instructions_sha256") != expected_hash:
         raise ExperimentError("effective app-server prompt hash mismatch")
-    observed_effective_hash = audit.get("effective_system_prompt_sha256")
-    if (require_tool_delivery and observed_effective_hash != expected_hash) or (
+    observed_prompt_hash = audit.get("system_prompt_sha256")
+    if (require_tool_delivery and observed_prompt_hash != expected_hash) or (
         not require_tool_delivery
-        and observed_effective_hash is not None
-        and observed_effective_hash != expected_hash
+        and observed_prompt_hash is not None
+        and observed_prompt_hash != expected_hash
     ):
-        raise ExperimentError("adapter effective prompt hash mismatch")
-    observed_instruction_hash = audit.get("agent_instruction_sha256")
-    if (
-        require_tool_delivery
-        and observed_instruction_hash != prompt_spec.agent_instruction_sha256
-    ) or (
-        not require_tool_delivery
-        and observed_instruction_hash is not None
-        and observed_instruction_hash != prompt_spec.agent_instruction_sha256
-    ):
-        raise ExperimentError("adapter agent-instruction hash mismatch")
+        raise ExperimentError("adapter system-prompt hash mismatch")
     observed_prompt_mode = audit.get("prompt_mode")
     if (require_tool_delivery and observed_prompt_mode != prompt_spec.mode) or (
         not require_tool_delivery
@@ -336,6 +326,10 @@ def _validate_runtime_audit(
         prompt_spec.source_path
     ):
         raise ExperimentError("adapter prompt source path mismatch")
+    if require_tool_delivery and audit.get("prompt_source_file_sha256") != (
+        prompt_spec.source_file_sha256
+    ):
+        raise ExperimentError("adapter prompt source-file hash mismatch")
     if audit.get("developer_instructions_empty") is not True:
         raise ExperimentError("developer instructions were not explicitly empty")
     if audit.get("instruction_sources") != []:
@@ -436,8 +430,8 @@ def preflight(
         "prompt_mode": prompt_spec.mode,
         "custom_prompt": prompt_spec.mode == OPTIMIZED_PROMPT_MODE,
         "prompt_source_path": prompt_spec.source_path,
-        "agent_instruction_sha256": prompt_spec.agent_instruction_sha256,
-        "system_prompt_sha256": prompt_spec.effective_system_prompt_sha256,
+        "prompt_source_file_sha256": prompt_spec.source_file_sha256,
+        "system_prompt_sha256": prompt_spec.system_prompt_sha256,
         "policy_sha256": _sha256_text(policy),
         "tool_names": list(catalog.names),
         "tool_schema_sha256": catalog.hash,
@@ -555,8 +549,10 @@ def _build_run_config(
     if check["prompt_mode"] == OPTIMIZED_PROMPT_MODE:
         llm_args_agent.update(
             {
-                "agent_instruction_path": experiment["agent_instruction_path"],
-                "agent_instruction_sha256": experiment["agent_instruction_sha256"],
+                "system_prompt_path": experiment["system_prompt_path"],
+                "system_prompt_file_sha256": experiment[
+                    "system_prompt_file_sha256"
+                ],
             }
         )
     return TextRunConfig(
@@ -607,8 +603,8 @@ def _finalize_experiment(
 
     policy = reloaded.info.environment_info.policy
     prompt_spec = _prompt_spec_for(experiment, policy)
-    if prompt_spec.effective_system_prompt_sha256 != check["system_prompt_sha256"]:
-        raise ExperimentError("effective prompt changed after preflight")
+    if prompt_spec.system_prompt_sha256 != check["system_prompt_sha256"]:
+        raise ExperimentError("system prompt changed after preflight")
     for audit in audits:
         _validate_runtime_audit(
             audit,
@@ -761,10 +757,8 @@ def _finalize_experiment(
             "mode": prompt_spec.mode,
             "custom_prompt": prompt_spec.mode == OPTIMIZED_PROMPT_MODE,
             "source_path": prompt_spec.source_path,
-            "agent_instruction_sha256": prompt_spec.agent_instruction_sha256,
-            "effective_system_prompt_sha256": (
-                prompt_spec.effective_system_prompt_sha256
-            ),
+            "source_file_sha256": prompt_spec.source_file_sha256,
+            "system_prompt_sha256": prompt_spec.system_prompt_sha256,
             "additional_developer_instructions": False,
         },
         "banking": {

@@ -22,6 +22,6 @@ def test_non_submission_rule_is_prominent_and_durable() -> None:
     assert "Test runs must disable per-task console summaries" in agents
     assert "test trajectories must not feed prompt optimization" in policy
     assert "implementation, not authorization" in policy
-    assert "consumed by one successful missing-only retry" in policy
-    assert "authorizes no further retry" in policy
-    assert "authorizes no additional" in agents
+    assert "No active recovery authorization record is present" in policy
+    assert "must not infer\nauthorization from a failed checkpoint" in policy
+    assert "No active recovery record is present" in agents

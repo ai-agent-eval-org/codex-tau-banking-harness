@@ -28,26 +28,27 @@ pilots at concurrency eight and 16, and the frozen 49-task terminal-use
 reference test. Allowlisting validates configuration; it is not execution
 authorization.
 
-A now-consumed one-shot authorization covered three exact, local-only
-`alltools` matrices:
+A consumed authorization covered two retained local-only `alltools` baseline
+matrices:
 
 1. `vanilla-train-alltools`: the frozen 48 train IDs, one trial, concurrency 16;
-2. `vanilla-test-alltools`: the frozen 49 test IDs, one trial, concurrency 16;
-3. `optimized-test-alltools`: those same 49 test IDs, one trial, concurrency 16,
-   only after its one-shot prompt has been authored exclusively from the fresh
-   vanilla train traces and frozen by repo-relative path and SHA-256.
+2. `vanilla-test-alltools`: the frozen 49 test IDs, one trial, concurrency 16.
 
-The third experiment and its prompt artifact were authored only after the first
-matrix produced the authorized train traces. Their train-only derivation,
-fixed path, and SHA-256 are recorded in `PROMPT_OPTIMIZATION.md`. Test
-output remains aggregate-only. In all cases, test trajectories must not feed prompt optimization.
-All three matrices completed. Their execution authority is consumed and does
-not cover a rerun, extra trial, other task ID, concurrency above 16, or one
-combined 97-task run. Any future local execution requires fresh authorization
-for its exact scope and cost, must preserve the personal-ChatGPT/Platform
-billing boundary, and can never authorize leaderboard submission.
+The current `optimized-test-alltools` config pins a complete replacement system
+prompt authored only after the retained train run. Its train-only derivation,
+fixed path, and SHA-256 are recorded in `PROMPT_OPTIMIZATION.md`. The current
+optimized prompt has not been evaluated, and the config is not authorization to
+run it. Because the test partition was used by an earlier retired demo, any
+future optimized run on it is an adaptive retest, not a pristine held-out run.
+In every case, test trajectories must not feed prompt optimization.
 
-## Interrupted-run recovery is one-shot and consumed
+Prior execution authority is consumed and does not cover a rerun, extra trial,
+other task ID, concurrency above 16, or one combined 97-task run. Any future
+local execution requires fresh authorization for its exact scope and cost,
+must preserve the personal-ChatGPT/Platform billing boundary, and can never
+authorize leaderboard submission.
+
+## Interrupted-run recovery is one-shot
 
 The harness includes a fail-closed `resume-interrupted` implementation so an
 already authorized matrix can be recovered without rerunning completed rows.
@@ -56,11 +57,7 @@ unless a fresh human authorization for one exact source run and exactly one
 retry has first been encoded in the hash-pinned record described in
 `authorizations/README.md`, committed, and left clean with the recovery code.
 
-The exact authorization committed for the interrupted Trial B source was
-consumed by one successful missing-only retry. Its attempt claim and receipt
-are terminal, so the record authorizes no further retry. The command must not
-infer new authorization from that consumed record, a failed checkpoint, a
-request to inspect or summarize it, or the prior authorization for the
-original matrix. Recovery is local only and does not relax the standing
-submission prohibition. Aggregate outcomes and scientific caveats are recorded
-in `PROMPT_OPTIMIZATION.md`.
+No active recovery authorization record is present. The command must not infer
+authorization from a failed checkpoint, a request to inspect or summarize it,
+or prior authorization for an original matrix. Recovery is local only and does
+not relax the standing submission prohibition.
