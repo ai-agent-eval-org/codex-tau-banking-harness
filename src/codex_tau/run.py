@@ -22,7 +22,6 @@ from tau2.domains.banking_knowledge.environment import (
 from tau2.domains.banking_knowledge.retrieval import get_info_policy_override
 from tau2.domains.banking_knowledge.retrieval_toolkits import (
     KnowledgeToolsAllTools,
-    KnowledgeToolsWithShell,
 )
 from tau2.registry import registry
 from tau2.runner.batch import run_tasks
@@ -64,9 +63,6 @@ from .task_split import (
 from .tool_bridge import ToolCatalog
 
 TAU_TAG = "v1.0.1"
-SMOKE_TASK_IDS = ("task_001", "task_004")
-PILOT2_TASK_IDS = TEST_TASK_IDS[:2]
-PILOT5_TASK_IDS = TEST_TASK_IDS[:5]
 AGENT_NAME = "codex_tau_dynamic"
 VANILLA_TRAIN_EXPERIMENT = "vanilla-train-alltools"
 VANILLA_TEST_EXPERIMENT = "vanilla-test-alltools"
@@ -94,51 +90,6 @@ _BASE_EXPERIMENT_KEYS = {
 def _authorized_experiments() -> dict[str, dict[str, Any]]:
     """Return the complete exact execution allowlist."""
     return {
-        "smoke-reference": {
-            "profile": "tau_reference_trial0",
-            "retrieval": "terminal_use",
-            "task_partition": "smoke",
-            "task_ids": SMOKE_TASK_IDS,
-            "trials_per_task": 1,
-            "max_concurrency": 1,
-            "prompt_mode": STANDARD_PROMPT_MODE,
-        },
-        "test-reference": {
-            "profile": "tau_reference_trial0",
-            "retrieval": "terminal_use",
-            "task_partition": "test",
-            "task_ids": TEST_TASK_IDS,
-            "trials_per_task": 1,
-            "max_concurrency": 1,
-            "prompt_mode": STANDARD_PROMPT_MODE,
-        },
-        "pilot2-alltools-concurrency2": {
-            "profile": "alltools_concurrency_validation_4trials",
-            "retrieval": "alltools",
-            "task_partition": "pilot2",
-            "task_ids": PILOT2_TASK_IDS,
-            "trials_per_task": 4,
-            "max_concurrency": 2,
-            "prompt_mode": STANDARD_PROMPT_MODE,
-        },
-        "pilot5-alltools": {
-            "profile": "alltools_pilot_4trials",
-            "retrieval": "alltools",
-            "task_partition": "pilot5",
-            "task_ids": PILOT5_TASK_IDS,
-            "trials_per_task": 4,
-            "max_concurrency": 8,
-            "prompt_mode": STANDARD_PROMPT_MODE,
-        },
-        "pilot5-alltools-concurrency16": {
-            "profile": "alltools_pilot_concurrency16_4trials",
-            "retrieval": "alltools",
-            "task_partition": "pilot5",
-            "task_ids": PILOT5_TASK_IDS,
-            "trials_per_task": 4,
-            "max_concurrency": 16,
-            "prompt_mode": STANDARD_PROMPT_MODE,
-        },
         VANILLA_TRAIN_EXPERIMENT: {
             "profile": "alltools_vanilla_trial0",
             "retrieval": "alltools",
@@ -185,9 +136,9 @@ def _sha256_text(value: str) -> str:
 
 def _show_per_task_console(task_partition: str) -> bool:
     """Keep held-out task outcomes out of prompt-development feedback."""
-    if task_partition not in {"smoke", "train", "pilot2", "pilot5", "test"}:
+    if task_partition not in {"train", "test"}:
         raise ExperimentError(f"unknown task partition: {task_partition!r}")
-    return task_partition in {"smoke", "train"}
+    return task_partition == "train"
 
 
 def _repo_root() -> Path:
@@ -269,28 +220,12 @@ def load_experiment(path: Path) -> dict[str, Any]:
     return experiment
 
 
-def _terminal_contract() -> tuple[list[Any], str]:
-    """Build terminal_use schemas without constructing the sandbox runtime."""
-    toolkit = KnowledgeToolsWithShell(get_db(), object())
-    tools = list(toolkit.get_tools().values())
-    policy = get_info_policy_override("terminal_use", get_knowledge_base())
-    return tools, policy
-
-
 def _alltools_contract() -> tuple[list[Any], str]:
     """Build alltools schemas without constructing live retrieval runtimes."""
     toolkit = KnowledgeToolsAllTools(get_db(), object(), object(), object())
     tools = list(toolkit.get_tools().values())
     policy = get_info_policy_override("alltools", get_knowledge_base())
     return tools, policy
-
-
-def _retrieval_contract(retrieval: str) -> tuple[list[Any], str]:
-    if retrieval == "terminal_use":
-        return _terminal_contract()
-    if retrieval == "alltools":
-        return _alltools_contract()
-    raise ExperimentError(f"unsupported retrieval profile: {retrieval!r}")
 
 
 def _prompt_spec_for(experiment: dict[str, Any], domain_policy: str) -> PromptSpec:
@@ -391,7 +326,7 @@ def _require_parent_prerequisites() -> dict[str, str]:
         )
     sandbox = shutil.which("srt")
     if sandbox is None:
-        raise ExperimentError("terminal_use requires the `srt` sandbox executable")
+        raise ExperimentError("alltools requires the `srt` sandbox executable")
     completed = subprocess.run(
         [sandbox, "--version"], capture_output=True, check=False, text=True, timeout=30
     )
@@ -410,7 +345,7 @@ def preflight(
     tasks = get_tasks("banking_knowledge", task_split_name=None, task_ids=task_ids)
     if tuple(task.id for task in tasks) != task_ids:
         raise ExperimentError("τ-bench returned a different frozen task ordering")
-    tools, policy = _retrieval_contract(experiment["retrieval"])
+    tools, policy = _alltools_contract()
     catalog = ToolCatalog(tools)
     prompt_spec = _prompt_spec_for(experiment, policy)
     runtime = CodexAppServer(

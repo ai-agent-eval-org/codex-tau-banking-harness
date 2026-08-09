@@ -2,9 +2,9 @@
 
 ## Credential separation
 
-The parent τ-bench process may receive `OPENAI_API_KEY` for the GPT-5.2 user
-simulator. The reference `terminal_use` profile does not use embeddings. Before
-spawning Codex, the harness removes
+The parent τ-bench process may receive `OPENAI_API_KEY` only for the GPT-5.2
+user simulator and the official embeddings used by the fixed `alltools`
+retrieval profile. Before spawning Codex, the harness removes
 OpenAI/Codex API-key and access-token variables, creates an isolated temporary
 `CODEX_HOME`, and requires app-server `account/read` to report a managed
 ChatGPT account. An API-key account, missing account, model fallback, or absent

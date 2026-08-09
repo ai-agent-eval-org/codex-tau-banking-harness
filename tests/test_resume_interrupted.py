@@ -228,9 +228,7 @@ def synthetic_case(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> SimpleNam
     monkeypatch.setattr(
         run_module, "_prompt_spec_for", lambda *args, **kwargs: _prompt_spec()
     )
-    monkeypatch.setattr(
-        run_module, "_retrieval_contract", lambda retrieval: ([], POLICY)
-    )
+    monkeypatch.setattr(run_module, "_alltools_contract", lambda: ([], POLICY))
     monkeypatch.setattr(
         run_module,
         "ToolCatalog",

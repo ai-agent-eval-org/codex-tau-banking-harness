@@ -7,10 +7,9 @@ This repository is a minimal, fail-closed adapter between the official
 
 The evaluated agent uses a personal ChatGPT/Codex login. The parent τ-bench
 process may use `OPENAI_API_KEY` only for the official GPT-5.2 user simulator
-and, in an `alltools` experiment, OpenAI embeddings. The `terminal_use`
-reference profile does not use embeddings. The child Codex process is launched
-with a sanitized environment and must report a ChatGPT account before a
-simulation can start.
+and official OpenAI embeddings. The child Codex process is launched with a
+sanitized environment and must report a ChatGPT account before a simulation
+can start.
 
 ## Non-submission rule
 
@@ -55,11 +54,6 @@ config fields, and developer instructions are rejected. The structured
 alltools schemas remain separate, authoritative, and unmodified. The
 train-only derivation is documented in
 [PROMPT_OPTIMIZATION.md](PROMPT_OPTIMIZATION.md).
-
-The historical terminal-use reference profile still renders τ-bench's
-canonical instruction and its distinct terminal-use policy directly; it does
-not use the alltools artifact and remains a separately labeled comparability
-control.
 
 Compare the only model-visible instruction change directly:
 
@@ -144,10 +138,10 @@ uv run ruff check src tests
 
 The tests do not call a model. They cover child-environment sanitization,
 ChatGPT auth enforcement, version pinning, strict Codex configuration,
-authoritative terminal-use and alltools schema parity, malformed/unknown tool
-rejection, single and multi-tool callback ordering, native-tool denial, prompt
-path/hash/UTF-8 provenance, post-run audit enforcement, and τ-bench
-message/result serialization.
+authoritative alltools schema parity, malformed/unknown tool rejection, single
+and multi-tool callback ordering, native-tool denial, prompt path/hash/UTF-8
+provenance, post-run audit enforcement, and τ-bench message/result
+serialization.
 
 ## Frozen local train/test split
 
@@ -160,34 +154,13 @@ reshuffles them.
 
 The split is formed by shuffling the sorted IDs with Python `random.Random(42)`,
 assigning the first `ceil(97 * 0.5)` IDs to test, assigning the remainder to
-train, and sorting each stored partition. The prior smoke/optimization tasks,
-`task_001` and `task_004`, are both in train. Prompt iteration and human
-labeling must use train only; the test partition is aggregate evaluation only.
+train, and sorting each stored partition. Prompt iteration and human labeling
+must use train only; the test partition is aggregate evaluation only.
 
 The commands below are exact reproducibility recipes, not standing permission
 for model inference. `preflight` is model-free. Every new `run` or
 `resume-interrupted` invocation requires fresh human authorization for its exact
 local scope and expected cost; completed one-shot authorizations are consumed.
-
-## Historical two-task smoke configuration
-
-The fixed tasks were selected before scoring: `task_001` is a product
-retrieval/recommendation task; `task_004` exercises the distinct account
-ownership and human-transfer path. The reference smoke uses one trial, seed
-300, `terminal_use`, GPT-5.4/high, 200 maximum steps, and GPT-5.2/low for the
-official user simulator.
-
-Load the configured Platform key into the parent process, then run exactly one
-arm at a time:
-
-```bash
-uv run codex-tau preflight experiments/smoke-reference.toml
-uv run codex-tau run experiments/smoke-reference.toml
-```
-
-`preflight` performs no model inference. `run` accepts only an exact named
-experiment matrix in the code allowlist; name, filename, profile, partition,
-task ordering, trials, concurrency, and prompt fields must all match.
 
 ## Validation history
 
@@ -198,8 +171,9 @@ concurrency 16 reduced wall time from 5m15s to 3m16s and remains the validated
 ceiling. The transport diagnosis and 64 MiB reader fix are summarized above.
 The disclosed pilot-task exposure remains recorded in
 [REFERENCE_PARITY.md](REFERENCE_PARITY.md) and
-[PROMPT_OPTIMIZATION.md](PROMPT_OPTIMIZATION.md). Retained experiment configs
-are reproducibility controls, not permission to rerun them.
+[PROMPT_OPTIMIZATION.md](PROMPT_OPTIMIZATION.md). Their obsolete executable
+configs and allowlist entries have been removed; this history grants no rerun
+authority.
 
 ## Completed alltools vanilla runs
 
@@ -294,28 +268,12 @@ The one recovery authorization used by the final adaptive retest is consumed,
 and no active recovery authorization record is present. Neither the
 implementation nor a failed local run can create retry authority.
 
-## Frozen test run
-
-The standard τ-bench prompt can be evaluated once on the frozen test partition
-with the same `terminal_use`, model, reasoning, simulator, step limit, and
-authentication boundaries as the smoke harness:
-
-```bash
-uv run codex-tau preflight experiments/test-reference.toml
-uv run codex-tau run experiments/test-reference.toml
-```
-
-The experiment contains all 49 test IDs explicitly. Its manifest records the
-split algorithm, seed, counts, digest, exact task IDs, tool-schema digest, and
-Pass@1. Per-task console summaries are disabled for held-out runs. Test
-trajectories must not be used for subsequent prompt optimization.
-
 ## Reference comparability
 
-The controllable trajectory settings match the external reference's
-GPT-5.4/high, GPT-5.2/low, seed 300, `terminal_use`, 200-step configuration and
-standard τ-bench prompt. See [REFERENCE_PARITY.md](REFERENCE_PARITY.md) for the
-remaining known and unknown differences. In particular, app-server/ChatGPT
+The prompt-study arms are not reference-comparable. Historical analysis of the
+external terminal-use artifact remains in
+[REFERENCE_PARITY.md](REFERENCE_PARITY.md), but its unused executable configs
+and runtime branch have been removed. In particular, app-server/ChatGPT
 inference is not the same transport or orchestration as τ-bench's standard
 Platform-backed `llm_agent`, and the external result predates this repository's
 pinned τ-bench v1.0.1 data.
@@ -324,14 +282,14 @@ pinned τ-bench v1.0.1 data.
 
 Local output is written below `runs/<experiment>-<timestamp>/` and includes
 τ-bench's incrementally checkpointed `results.json`, one per-trajectory adapter
-audit keyed by task and simulation seed, and `manifest.json`. Everything below
-`runs/` except `.gitkeep` is ignored. The 410 MiB reference result, auth state,
-raw databases, embedding caches, and credentials are never copied or committed.
+audit keyed by task and simulation seed, and `manifest.json`. Local runs are
+ignored except for the explicitly authorized Option A `results.json` described
+above. Auth state, raw databases, embedding caches, and credentials are never
+copied or committed.
 
-Smoke results prove integration and setting parity only. The frozen
-test-partition result is a local, single-trial held-out estimate, not an official
-full-domain leaderboard score. Neither is leaderboard-valid, and neither may be
-submitted. The standing non-submission rule in
+The frozen test-partition results are local, single-trial estimates, not
+official full-domain leaderboard scores. They are not leaderboard-valid and
+may not be submitted. The standing non-submission rule in
 [BENCHMARK_POLICY.md](BENCHMARK_POLICY.md) applies to every run. This repository
 intentionally contains no submission path.
 

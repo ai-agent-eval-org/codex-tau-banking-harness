@@ -9,9 +9,6 @@ from tau2.runner.helpers import get_tasks
 from codex_tau.prompt import OPTIMIZED_SYSTEM_PROMPT_PATH, prompt_hash
 from codex_tau.run import (
     OPTIMIZED_TEST_EXPERIMENT,
-    PILOT2_TASK_IDS,
-    PILOT5_TASK_IDS,
-    SMOKE_TASK_IDS,
     VANILLA_TEST_EXPERIMENT,
     VANILLA_TRAIN_EXPERIMENT,
     _authorized_experiments,
@@ -44,7 +41,6 @@ def test_frozen_split_exactly_reproduces_seed_42_algorithm() -> None:
     assert len(TEST_TASK_IDS) == 49
     assert set(TRAIN_TASK_IDS).isdisjoint(TEST_TASK_IDS)
     assert set(TRAIN_TASK_IDS) | set(TEST_TASK_IDS) == set(all_task_ids)
-    assert set(SMOKE_TASK_IDS) <= set(TRAIN_TASK_IDS)
 
 
 def test_split_digest_is_stable() -> None:
@@ -53,60 +49,17 @@ def test_split_digest_is_stable() -> None:
     )
 
 
-def test_test_experiment_is_exactly_bounded_to_frozen_test_ids() -> None:
-    experiment = load_experiment(REPO_ROOT / "experiments/test-reference.toml")
-    assert experiment["task_partition"] == "test"
-    assert tuple(experiment["task_ids"]) == TEST_TASK_IDS
-    assert experiment["retrieval"] == "terminal_use"
-    assert experiment["agent_reasoning"] == "high"
-    assert experiment["max_steps"] == 200
-    assert experiment["trials_per_task"] == 1
-    assert experiment["max_concurrency"] == 1
-
-
-def test_alltools_pilot5_is_the_predeclared_holdout_prefix() -> None:
-    experiment = load_experiment(REPO_ROOT / "experiments/pilot5-alltools.toml")
-    assert PILOT5_TASK_IDS == TEST_TASK_IDS[:5]
-    assert tuple(experiment["task_ids"]) == PILOT5_TASK_IDS
-    assert experiment["profile"] == "alltools_pilot_4trials"
-    assert experiment["retrieval"] == "alltools"
-    assert experiment["trials_per_task"] == 4
-    assert experiment["max_steps"] == 200
-    assert experiment["max_concurrency"] == 8
-
-
-def test_alltools_pilot5_concurrency16_is_exactly_bounded() -> None:
-    experiment = load_experiment(
-        REPO_ROOT / "experiments/pilot5-alltools-concurrency16.toml"
-    )
-    assert PILOT5_TASK_IDS == TEST_TASK_IDS[:5]
-    assert tuple(experiment["task_ids"]) == PILOT5_TASK_IDS
-    assert experiment["profile"] == "alltools_pilot_concurrency16_4trials"
-    assert experiment["retrieval"] == "alltools"
-    assert experiment["trials_per_task"] == 4
-    assert experiment["max_steps"] == 200
-    assert experiment["max_concurrency"] == 16
-
-
-def test_alltools_concurrency_validation_is_exactly_bounded() -> None:
-    experiment = load_experiment(
-        REPO_ROOT / "experiments/pilot2-alltools-concurrency2.toml"
-    )
-    assert PILOT2_TASK_IDS == TEST_TASK_IDS[:2]
-    assert tuple(experiment["task_ids"]) == PILOT2_TASK_IDS
-    assert experiment["profile"] == "alltools_concurrency_validation_4trials"
-    assert experiment["retrieval"] == "alltools"
-    assert experiment["trials_per_task"] == 4
-    assert experiment["max_steps"] == 200
-    assert experiment["max_concurrency"] == 2
-
-
 def test_held_out_runs_suppress_task_level_console_feedback() -> None:
-    assert _show_per_task_console("smoke") is True
     assert _show_per_task_console("train") is True
-    assert _show_per_task_console("pilot2") is False
-    assert _show_per_task_console("pilot5") is False
     assert _show_per_task_console("test") is False
+
+
+def test_execution_allowlist_contains_only_retained_study_matrices() -> None:
+    assert set(_authorized_experiments()) == {
+        VANILLA_TRAIN_EXPERIMENT,
+        VANILLA_TEST_EXPERIMENT,
+        OPTIMIZED_TEST_EXPERIMENT,
+    }
 
 
 def test_fresh_alltools_vanilla_matrices_are_exactly_frozen() -> None:

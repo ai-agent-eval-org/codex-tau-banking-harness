@@ -24,11 +24,10 @@ In particular:
 
 The repository intentionally provides `preflight` and bounded local `run`
 commands only. It provides no leaderboard submission command. Its exact
-configuration allowlist includes the two-task smoke set, the
-two-task/four-trial alltools validation, the five-task/four-trial alltools
-pilots at concurrency eight and 16, and the frozen 49-task terminal-use
-reference test. Allowlisting validates configuration; it is not execution
-authorization.
+configuration allowlist contains only the three alltools prompt-study matrices:
+train baseline, test baseline, and optimized test. Historical smoke, pilot,
+scaling, and terminal-use reference configs have been removed. Allowlisting
+validates configuration; it is not execution authorization.
 
 A consumed authorization covered two retained local-only `alltools` baseline
 matrices:

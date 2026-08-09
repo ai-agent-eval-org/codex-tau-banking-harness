@@ -36,10 +36,8 @@ def test_system_prompt_is_exactly_tau2_standard() -> None:
     ) == expected
 
 
-def test_reference_profile_has_no_custom_prompt_override() -> None:
+def test_vanilla_profiles_have_no_custom_prompt_override() -> None:
     for name in (
-        "smoke-reference",
-        "test-reference",
         "vanilla-train-alltools",
         "vanilla-test-alltools",
     ):

@@ -64,12 +64,12 @@ task_102
 - Test runs must disable per-task console summaries. Inspect only aggregate
   completion, infrastructure integrity, and final score; do not open test
   trajectories or task-level rewards during prompt development.
-- Keep the reference configuration fixed at `terminal_use`, the exact standard
-  τ-bench `LLMAgent` system-prompt constructor, the official runtime tool
-  schemas, GPT-5.4/high through personal ChatGPT authentication, 200 maximum
-  steps, and GPT-5.2/low for the official user simulator. The Platform API key
-  may be used only by the simulator and official `alltools` embeddings, never
-  for evaluated Codex inference.
+- Every runnable experiment uses the unmodified banking `alltools` toolkit,
+  GPT-5.4/high through personal ChatGPT authentication, 200 maximum steps, and
+  GPT-5.2/low for the official user simulator. The Platform API key may be used
+  only by the simulator and official embeddings, never for evaluated Codex
+  inference. Historical smoke, pilot, scaling, and terminal-use reference
+  configs must not be restored without fresh explicit authorization.
 - A custom or optimized prompt is a separately named experiment and must never
   be represented as reference-comparable. The reference and vanilla profiles
   have no configurable prompt override or additional developer instructions.
@@ -85,8 +85,8 @@ task_102
 - An experiment config or runtime allowlist entry is a reproducibility control,
   not execution authority. Every model-bearing run requires fresh, explicit
   human authorization for its exact task IDs, trials, concurrency, and expected
-  cost. Prior pilot, vanilla, optimized, and recovery execution authority is
-  consumed. Concurrency 16 is the validated maximum; do not increase it without
+  cost. All prior execution authority is consumed. Concurrency 16 is the
+  validated maximum; do not increase it without
   a separately authorized, bounded fixed-matrix scaling validation. Never run
   one combined 97-task matrix or submit to a leaderboard.
 - An optimized prompt artifact and experiment config may be authored only

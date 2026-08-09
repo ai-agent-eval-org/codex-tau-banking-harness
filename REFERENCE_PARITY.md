@@ -9,7 +9,7 @@ source configuration cannot be reconstructed.
 
 ## Controllable trajectory settings
 
-| Setting | External artifact | Reference profile |
+| Setting | External artifact | Removed reconstructed control |
 | --- | --- | --- |
 | Agent model | GPT-5.4 | GPT-5.4 |
 | Reasoning | high | high |
@@ -46,9 +46,10 @@ source configuration cannot be reconstructed.
   provider-side defaults even when model, reasoning effort, prompt bytes, and
   tool schemas match.
 
-The reference profile is therefore a controlled current-v1.0.1 comparison, not
-an exact reproduction of the March artifact. Any score comparison must retain
-that qualification.
+The former reconstructed control would have been a current-v1.0.1 comparison,
+not an exact reproduction of the March artifact. Its unused executable config
+and terminal-use runtime branch have been removed. Any historical comparison
+must retain that qualification.
 
 ## Alltools prompt-study arms
 

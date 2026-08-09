@@ -629,7 +629,7 @@ def inspect_resume_source(
         or prompt_spec.system_prompt_sha256 != authorization["system_prompt_sha256"]
     ):
         raise ResumeError("authorized prompt digests do not match")
-    tools, current_policy = harness._retrieval_contract(experiment["retrieval"])
+    tools, current_policy = harness._alltools_contract()
     if current_policy != policy:
         raise ResumeError("source policy differs from the pinned retrieval policy")
     if harness.ToolCatalog(tools).hash != authorization["tool_schema_sha256"]:
