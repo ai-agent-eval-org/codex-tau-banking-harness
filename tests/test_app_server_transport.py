@@ -35,6 +35,41 @@ def test_json_rpc_transport_accepts_line_above_asyncio_default(
         transport.close()
 
 
+def test_optimizer_code_mode_flags_are_scoped_to_app_server(
+    tmp_path: Path,
+) -> None:
+    child_code = (
+        "import json, sys; "
+        "print(json.dumps({'method':'argv','params':sys.argv[1:]}), flush=True)"
+    )
+    transport = JsonRpcProcess(
+        [sys.executable, "-c", child_code],
+        tmp_path,
+        os.environ,
+        app_server_args=(
+            "--enable",
+            "code_mode",
+            "--enable",
+            "code_mode_host",
+        ),
+    )
+    try:
+        message = transport.inbox.get(timeout=5)
+        assert message == {
+            "method": "argv",
+            "params": [
+                "app-server",
+                "--enable",
+                "code_mode",
+                "--enable",
+                "code_mode_host",
+                "--strict-config",
+            ],
+        }
+    finally:
+        transport.close()
+
+
 def test_unexpected_stdout_close_is_reported_without_watchdog(
     tmp_path: Path,
 ) -> None:

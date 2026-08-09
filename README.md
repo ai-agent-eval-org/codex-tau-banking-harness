@@ -158,9 +158,10 @@ train, and sorting each stored partition. Prompt iteration and human labeling
 must use train only; the test partition is aggregate evaluation only.
 
 The commands below are exact reproducibility recipes, not standing permission
-for model inference. `preflight` is model-free. Every new `run` or
-`resume-interrupted` invocation requires fresh human authorization for its exact
-local scope and expected cost; completed one-shot authorizations are consumed.
+for model inference. `preflight` and `optimize --preflight-only` start no model
+turn. Every new `run`, `resume-interrupted`, or `optimize` inference invocation
+requires fresh human authorization for its exact local scope and expected cost;
+completed one-shot authorizations are consumed.
 
 ## Validation history
 
@@ -204,7 +205,37 @@ with SHA-256
 It is not a leaderboard bundle, creates no submission authority, and excludes
 the local adapter-audit directory and authentication artifacts.
 
-## One-shot train-trace prompt pass
+## Standalone one-shot optimizer
+
+The default command prepares the leakage-safe packet internally and runs one
+fresh ephemeral Codex app-server thread:
+
+```bash
+uv run codex-tau optimize --preflight-only
+uv run codex-tau optimize
+```
+
+The inference command has no required arguments. It is fixed to the retained
+48-trace train run, the full canonical baseline prompt, all 17 authoritative
+tool contracts, the checked-in optimizer instruction, GPT-5.6-Luna/max, and the
+existing personal ChatGPT authentication. The child process receives no
+Platform API key, developer instruction, instruction source, test evidence, or
+previous optimized prompt. Only this optimizer subprocess enables app-server's
+isolated local Code Mode host; it can orchestrate the seven dynamic packet
+tools but receives no shell, filesystem, web, network, memory, MCP, app,
+plugin, or subagent capability. The tools can only inspect the packet, maintain
+and reread a complete analysis ledger, and submit one report plus one prompt.
+App-server context compaction is accepted only as a counted lifecycle event.
+
+Verified output is written below the ignored local directory
+`optimizer-runs/one-shot-<timestamp>/`. It contains a report, a candidate
+`optimized.md`, and an audit manifest. The command does not change the active
+[`prompts/banking_knowledge/optimized.md`](prompts/banking_knowledge/optimized.md),
+run τ-bench, evaluate a candidate, select among candidates, publish artifacts,
+or create authority for any later evaluation. Its presence is not standing
+permission to run it.
+
+## Historical one-shot train-trace prompt pass
 
 Only after `vanilla-train-alltools` finished were its 48 saved trajectories
 read for prompt work. The method was a single generalizing reflection pass,
@@ -224,29 +255,37 @@ uv run codex-tau preflight experiments/optimized-test-alltools.toml
 uv run codex-tau run experiments/optimized-test-alltools.toml
 ```
 
-The current prompt was synthesized once by GPT-5.6-Sol from a leakage-safe
+The active prompt was synthesized once by GPT-5.6-Luna/max from the standalone
 packet containing only the 48 completed train trajectories, canonical
-baseline, and all 17 authoritative tool contracts. The exact optimizer
-instruction, packet exporter, evidence hashes, frozen prompt hashes, and
-one-shot boundary are documented in
-[PROMPT_OPTIMIZATION.md](PROMPT_OPTIMIZATION.md). The previous optimized run
-was deleted as a superseded demo artifact and is not evidence for this prompt.
+baseline, and all 17 authoritative tool contracts. The one app-server turn
+read and analyzed all 48 traces and 17 tools, reread its complete external
+ledger, and submitted one prompt. The harness retained that submission without
+content filtering, and the repository prompt is an exact byte match. Its
+generation provenance and fixed hashes are recorded in
+[PROMPT_OPTIMIZATION.md](PROMPT_OPTIMIZATION.md).
 
-The final adaptive retest is
+Its authorized adaptive retest, `optimized-test-alltools-20260809T155235Z`,
+completed all 49 simulation attempts but stopped fail-closed before finalizing:
+46 rows were graded, with 18 passes and 28 failures, while `task_027`,
+`task_037`, and `task_041` ended in the same empty-assistant-message
+infrastructure error and have no reward. The provisional graded rate is
+**18/46 (39.1304%)**; counting the three missing rows as failures would be
+**18/49 (36.7347%)**, but neither is an authoritative completed score. All 49
+adapter audits verified the frozen Luna prompt, personal ChatGPT
+authentication, GPT-5.4/high, no rerouting or instruction injection, no native
+capability use, and complete delivery of all 1,605 accepted dynamic-tool
+results. The local checkpoint SHA-256 is
+`5057b1fbca629a0821f8a6e2b86153f68053a4a57ef4513bcf085412009cda14`.
+The run authorization is consumed; no retry is authorized.
+
+For historical comparison only, the previously active GPT-5.6-Sol prompt's
+final adaptive retest was
 `optimized-test-alltools-20260809T033050Z--recovery-bb161af26fd2`. It scored
 **19/49 (38.7755%)**, compared with the canonical alltools baseline's **15/49
-(30.6122%)**: four additional passes and an observed increase of 8.1633
-percentage points. All 49 trajectories ended with `user_stop`; all 1,495
-accepted dynamic-tool calls received their results; and all adapter audits
-passed the authentication, model, prompt, capability, reroute, and delivery
-gates.
-
-One original row failed before grading because the evaluated agent returned an
-empty message. A separately authorized recovery replaced exactly that missing
-row while cryptographically preserving the other 48. The final manifest
-classifies this truthfully as a single missing-only infrastructure retry, not
-an independent rerun. The one-shot authorization is consumed and its active
-JSON record has been removed from the branch tip.
+(30.6122%)**. One original no-reward infrastructure row was replaced by a
+separately authorized missing-only retry that preserved the other 48 rows.
+That result does not score the current Luna prompt, and both historical
+evaluation authorizations are consumed.
 
 Any completed result must be labeled an adaptive retest because the same
 partition was used by the retained vanilla evaluation and retired demos. Only
@@ -280,12 +319,17 @@ pinned τ-bench v1.0.1 data.
 
 ## Artifacts and leaderboard scope
 
-Local output is written below `runs/<experiment>-<timestamp>/` and includes
+Local evaluation output is written below `runs/<experiment>-<timestamp>/` and includes
 τ-bench's incrementally checkpointed `results.json`, one per-trajectory adapter
 audit keyed by task and simulation seed, and `manifest.json`. Local runs are
-ignored except for the explicitly authorized Option A `results.json` described
-above. Auth state, raw databases, embedding caches, and credentials are never
-copied or committed.
+ignored except for the explicitly authorized, credential-scanned Option A,
+Option B, and incomplete Luna `results.json` files tracked on this branch. The
+Luna checkpoint is retained at
+[`runs/optimized-test-alltools-20260809T155235Z/results.json`](runs/optimized-test-alltools-20260809T155235Z/results.json);
+it is 17,772,033 bytes and has the SHA-256 recorded above. Their adapter audits
+and authentication artifacts remain local. Optimizer candidates under
+`optimizer-runs/` are also ignored. Auth state, raw databases, embedding caches,
+and credentials are never copied or committed.
 
 The frozen test-partition results are local, single-trial estimates, not
 official full-domain leaderboard scores. They are not leaderboard-valid and

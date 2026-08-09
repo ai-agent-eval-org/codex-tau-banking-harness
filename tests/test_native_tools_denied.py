@@ -12,8 +12,13 @@ class FakeTransport:
     def __init__(self, messages: list[dict]):
         self.inbox = queue.Queue()
         self.stderr_line_count = 0
+        self.requests: list[tuple[str, object]] = []
         for message in messages:
             self.inbox.put(message)
+
+    def request(self, method: str, params: object = None, timeout: float = 60) -> dict:
+        self.requests.append((method, params))
+        return {}
 
     def close(self) -> None:
         pass
@@ -40,6 +45,307 @@ def test_every_native_capability_item_fails_closed(item_type: str) -> None:
 
 def test_tau_dynamic_tool_item_is_the_only_tool_item_allowed() -> None:
     reject_native_item({"type": "dynamicToolCall"})
+
+
+def test_context_compaction_requires_an_explicit_non_evaluation_allowlist() -> None:
+    with pytest.raises(ProtocolError, match="contextCompaction"):
+        reject_native_item({"type": "contextCompaction"})
+    reject_native_item(
+        {"type": "contextCompaction"},
+        frozenset(
+            {
+                "userMessage",
+                "agentMessage",
+                "reasoning",
+                "dynamicToolCall",
+                "contextCompaction",
+            }
+        ),
+    )
+
+
+def test_optimizer_code_mode_is_restricted_to_luna_max() -> None:
+    with pytest.raises(ProtocolError, match="restricted to GPT-5.6-Luna/max"):
+        CodexAppServer(
+            repo_root=Path("."),
+            tools=[],
+            system_prompt="prompt",
+            model="gpt-5.4",
+            reasoning_effort="high",
+            enable_optimizer_code_mode=True,
+            transport=FakeTransport([]),  # type: ignore[arg-type]
+        )
+
+
+def test_optimizer_code_mode_is_explicitly_audited() -> None:
+    runtime = CodexAppServer(
+        repo_root=Path("."),
+        tools=[],
+        system_prompt="prompt",
+        model="gpt-5.6-luna",
+        reasoning_effort="max",
+        enable_optimizer_code_mode=True,
+        transport=FakeTransport([]),  # type: ignore[arg-type]
+    )
+    assert runtime.audit["optimizer_code_mode_enabled"] is True
+    assert runtime.audit["optimizer_code_mode_host"] == "local"
+
+
+def test_evaluated_agent_does_not_enable_optimizer_code_mode() -> None:
+    runtime = CodexAppServer(
+        repo_root=Path("."),
+        tools=[],
+        system_prompt="prompt",
+        transport=FakeTransport([]),  # type: ignore[arg-type]
+    )
+    assert runtime.audit["optimizer_code_mode_enabled"] is False
+    assert runtime.audit["optimizer_code_mode_host"] is None
+
+
+def test_optimizer_allowlist_counts_completed_context_compaction() -> None:
+    transport = FakeTransport(
+        [
+            {
+                "method": "item/started",
+                "params": {"item": {"type": "contextCompaction"}},
+            },
+            {
+                "method": "item/completed",
+                "params": {"item": {"type": "contextCompaction"}},
+            },
+            {
+                "method": "item/completed",
+                "params": {
+                    "item": {
+                        "type": "agentMessage",
+                        "phase": "final_answer",
+                        "text": "done",
+                    }
+                },
+            },
+            {
+                "method": "turn/completed",
+                "params": {"turn": {"status": "completed"}},
+            },
+        ]
+    )
+    runtime = CodexAppServer(
+        repo_root=Path("."),
+        tools=[],
+        system_prompt="prompt",
+        transport=transport,  # type: ignore[arg-type]
+        allowed_item_types=frozenset(
+            {
+                "userMessage",
+                "agentMessage",
+                "reasoning",
+                "dynamicToolCall",
+                "contextCompaction",
+            }
+        ),
+    )
+    assert runtime._wait_for_output() == ("done", True)
+    assert runtime.audit["context_compaction_count"] == 1
+
+
+def test_exact_thread_settings_update_is_verified() -> None:
+    transport = FakeTransport(
+        [
+            {
+                "method": "thread/settings/updated",
+                "params": {
+                    "threadId": "thread-1",
+                    "threadSettings": {
+                        "cwd": "/tmp/empty-codex-cwd",
+                        "approvalPolicy": "never",
+                        "sandboxPolicy": {"type": "readOnly"},
+                        "model": "gpt-5.6-luna",
+                        "effort": "max",
+                        "personality": "none",
+                        "collaborationMode": {
+                            "mode": "default",
+                            "settings": {"developerInstructions": ""},
+                        },
+                    },
+                },
+            },
+            {
+                "method": "item/completed",
+                "params": {
+                    "item": {
+                        "type": "agentMessage",
+                        "phase": "final_answer",
+                        "text": "done",
+                    }
+                },
+            },
+            {
+                "method": "turn/completed",
+                "params": {"turn": {"status": "completed"}},
+            },
+        ]
+    )
+    runtime = CodexAppServer(
+        repo_root=Path("."),
+        tools=[],
+        system_prompt="prompt",
+        model="gpt-5.6-luna",
+        reasoning_effort="max",
+        transport=transport,  # type: ignore[arg-type]
+    )
+    runtime._thread_id = "thread-1"
+    runtime._expected_cwd = "/tmp/empty-codex-cwd"
+    assert runtime._wait_for_output() == ("done", True)
+    assert runtime.audit["thread_settings_update_count"] == 1
+    assert runtime.audit["thread_settings_verified"] is True
+
+
+def test_settings_lifecycle_preflight_starts_no_turn() -> None:
+    transport = FakeTransport(
+        [
+            {
+                "method": "thread/settings/updated",
+                "params": {
+                    "threadId": "thread-1",
+                    "threadSettings": {
+                        "cwd": "/tmp/empty-codex-cwd",
+                        "approvalPolicy": "never",
+                        "sandboxPolicy": {"type": "readOnly"},
+                        "model": "gpt-5.6-luna",
+                        "modelProvider": "openai",
+                        "serviceTier": None,
+                        "effort": "max",
+                        "summary": None,
+                        "personality": "none",
+                        "collaborationMode": {
+                            "mode": "default",
+                            "settings": {"developerInstructions": ""},
+                        },
+                    },
+                },
+            }
+        ]
+    )
+    runtime = CodexAppServer(
+        repo_root=Path("."),
+        tools=[],
+        system_prompt="prompt",
+        model="gpt-5.6-luna",
+        reasoning_effort="max",
+        transport=transport,  # type: ignore[arg-type]
+    )
+    runtime._thread_id = "thread-1"
+    runtime._expected_cwd = "/tmp/empty-codex-cwd"
+    runtime.verify_effective_thread_settings()
+    assert transport.requests[0][0] == "thread/settings/update"
+    assert runtime.audit["thread_settings_preflight_verified"] is True
+    assert runtime.audit["turns_started"] == 0
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("model", "gpt-5.4"),
+        ("effort", "high"),
+        ("approvalPolicy", "on-request"),
+        ("personality", "friendly"),
+        ("sandboxPolicy", {"type": "workspaceWrite"}),
+    ],
+)
+def test_thread_settings_drift_fails_closed(field: str, value: object) -> None:
+    settings = {
+        "cwd": "/tmp/empty-codex-cwd",
+        "approvalPolicy": "never",
+        "sandboxPolicy": {"type": "readOnly"},
+        "model": "gpt-5.6-luna",
+        "effort": "max",
+        "personality": "none",
+    }
+    settings[field] = value
+    runtime = CodexAppServer(
+        repo_root=Path("."),
+        tools=[],
+        system_prompt="prompt",
+        model="gpt-5.6-luna",
+        reasoning_effort="max",
+        transport=FakeTransport(
+            [
+                {
+                    "method": "thread/settings/updated",
+                    "params": {
+                        "threadId": "thread-1",
+                        "threadSettings": settings,
+                    },
+                }
+            ]
+        ),  # type: ignore[arg-type]
+    )
+    runtime._thread_id = "thread-1"
+    runtime._expected_cwd = "/tmp/empty-codex-cwd"
+    with pytest.raises(ProtocolError, match="thread settings drift"):
+        runtime._wait_for_output()
+    assert runtime.audit["native_capability_denied"] is True
+
+
+def test_official_runtime_warning_is_hashed_and_nonfatal() -> None:
+    transport = FakeTransport(
+        [
+            {
+                "method": "warning",
+                "params": {
+                    "threadId": "thread-1",
+                    "message": "A non-fatal app-server warning.",
+                },
+            },
+            {
+                "method": "item/completed",
+                "params": {
+                    "item": {
+                        "type": "agentMessage",
+                        "phase": "final_answer",
+                        "text": "done",
+                    }
+                },
+            },
+            {
+                "method": "turn/completed",
+                "params": {"turn": {"status": "completed"}},
+            },
+        ]
+    )
+    runtime = CodexAppServer(
+        repo_root=Path("."),
+        tools=[],
+        system_prompt="prompt",
+        transport=transport,  # type: ignore[arg-type]
+    )
+    runtime._thread_id = "thread-1"
+    assert runtime._wait_for_output() == ("done", True)
+    assert runtime.audit["warning_count"] == 1
+    assert runtime.audit["warning_sha256"] == [
+        "525d5c6e08db3d16b8ab7602300ef32ba71a6202a46f541bd81a9a29d16bc411"
+    ]
+
+
+@pytest.mark.parametrize(
+    "params",
+    [
+        {"threadId": "another-thread", "message": "warning"},
+        {"threadId": "thread-1", "message": ""},
+        {"threadId": "thread-1", "message": 123},
+    ],
+)
+def test_malformed_or_misscoped_warning_fails_closed(params: dict) -> None:
+    runtime = CodexAppServer(
+        repo_root=Path("."),
+        tools=[],
+        system_prompt="prompt",
+        transport=FakeTransport([{"method": "warning", "params": params}]),  # type: ignore[arg-type]
+    )
+    runtime._thread_id = "thread-1"
+    with pytest.raises(ProtocolError, match="warning"):
+        runtime._wait_for_output()
+    assert runtime.audit["native_capability_denied"] is True
 
 
 def test_disabled_remote_control_status_is_lifecycle_only() -> None:

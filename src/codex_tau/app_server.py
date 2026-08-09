@@ -33,7 +33,9 @@ class ProtocolError(RuntimeError):
     """The app-server emitted a denied or malformed protocol message."""
 
 
-_ALLOWED_ITEM_TYPES = {"userMessage", "agentMessage", "reasoning", "dynamicToolCall"}
+_ALLOWED_ITEM_TYPES = frozenset(
+    {"userMessage", "agentMessage", "reasoning", "dynamicToolCall"}
+)
 # App-server lifecycle events echo complete dynamic-tool results. The banking
 # corpus is currently under 8 MiB, so 64 MiB is deliberately generous while
 # still bounding memory if a shell command produces pathological output. This
@@ -43,17 +45,27 @@ TURN_OUTPUT_TIMEOUT_SECONDS = 600
 TURN_OUTPUT_IDLE_TIMEOUT_SECONDS = 120
 
 
-def reject_native_item(item: Mapping[str, Any]) -> None:
+def reject_native_item(
+    item: Mapping[str, Any],
+    allowed_item_types: frozenset[str] = _ALLOWED_ITEM_TYPES,
+) -> None:
     """Reject every app-server item outside the benchmark's narrow protocol."""
     item_type = item.get("type")
-    if item_type not in _ALLOWED_ITEM_TYPES:
+    if item_type not in allowed_item_types:
         raise ProtocolError(f"denied native Codex item observed: {item_type!r}")
 
 
 class JsonRpcProcess:
     """Asyncio subprocess transport presented through a synchronous boundary."""
 
-    def __init__(self, command: list[str], cwd: Path, env: Mapping[str, str]):
+    def __init__(
+        self,
+        command: list[str],
+        cwd: Path,
+        env: Mapping[str, str],
+        *,
+        app_server_args: tuple[str, ...] = (),
+    ):
         self.inbox: queue.Queue[Mapping[str, Any]] = queue.Queue()
         self.stderr_line_count = 0
         self._loop = asyncio.new_event_loop()
@@ -66,7 +78,7 @@ class JsonRpcProcess:
         self._reader_task: asyncio.Task[None] | None = None
         self._stderr_task: asyncio.Task[None] | None = None
         future = asyncio.run_coroutine_threadsafe(
-            self._start(command, cwd, env), self._loop
+            self._start(command, cwd, env, app_server_args), self._loop
         )
         future.result(timeout=30)
 
@@ -75,11 +87,16 @@ class JsonRpcProcess:
         self._loop.run_forever()
 
     async def _start(
-        self, command: list[str], cwd: Path, env: Mapping[str, str]
+        self,
+        command: list[str],
+        cwd: Path,
+        env: Mapping[str, str],
+        app_server_args: tuple[str, ...],
     ) -> None:
         self._process = await asyncio.create_subprocess_exec(
             *command,
             "app-server",
+            *app_server_args,
             "--strict-config",
             cwd=cwd,
             env=dict(env),
@@ -234,6 +251,12 @@ class CodexAppServer:
         repo_root: Path,
         tools: list[Any],
         system_prompt: str,
+        model: str = "gpt-5.4",
+        reasoning_effort: str = "high",
+        enable_optimizer_code_mode: bool = False,
+        allowed_item_types: frozenset[str] = _ALLOWED_ITEM_TYPES,
+        turn_output_timeout_seconds: float = TURN_OUTPUT_TIMEOUT_SECONDS,
+        turn_output_idle_timeout_seconds: float = TURN_OUTPUT_IDLE_TIMEOUT_SECONDS,
         auth_file: Path | None = None,
         transport: JsonRpcProcess | None = None,
         audit_sink: Callable[[Mapping[str, Any]], None] | None = None,
@@ -247,25 +270,48 @@ class CodexAppServer:
         self._thread_id: str | None = None
         self._turn_id: str | None = None
         self._final_text: str | None = None
+        self._expected_cwd: str | None = None
         self._audit_sink = audit_sink
+        self._model = model
+        self._reasoning_effort = reasoning_effort
+        self._enable_optimizer_code_mode = enable_optimizer_code_mode
+        if enable_optimizer_code_mode and (
+            model != "gpt-5.6-luna" or reasoning_effort != "max"
+        ):
+            raise ProtocolError(
+                "optimizer Code Mode is restricted to GPT-5.6-Luna/max"
+            )
+        self._allowed_item_types = allowed_item_types
+        self._turn_output_timeout_seconds = turn_output_timeout_seconds
+        self._turn_output_idle_timeout_seconds = turn_output_idle_timeout_seconds
         self.audit: dict[str, Any] = {
             "base_instructions_sha256": hashlib.sha256(
                 system_prompt.encode()
             ).hexdigest(),
+            "context_compaction_count": 0,
+            "optimizer_code_mode_enabled": enable_optimizer_code_mode,
+            "optimizer_code_mode_host": "local" if enable_optimizer_code_mode else None,
             "developer_instructions_empty": True,
             "dynamic_call_count": 0,
             "dynamic_call_names": [],
             "last_protocol_method": None,
             "native_capability_denied": False,
             "model_rerouted": False,
+            "requested_model": model,
+            "reasoning_effort": reasoning_effort,
             "protocol_event_count": 0,
             "remote_control_statuses": [],
             "transport_stream_reader_limit_bytes": (
                 APP_SERVER_STREAM_READER_LIMIT_BYTES
             ),
             "tool_results_returned": 0,
+            "thread_settings_update_count": 0,
+            "thread_settings_preflight_verified": False,
+            "thread_settings_verified": False,
             "turns_completed": 0,
             "turns_started": 0,
+            "warning_count": 0,
+            "warning_sha256": [],
         }
 
         if transport is not None:
@@ -284,7 +330,17 @@ class CodexAppServer:
         shutil.copyfile(repo_root / "codex" / "config.toml", home / "config.toml")
         os.symlink(source_auth.resolve(), home / "auth.json")
         child_env["CODEX_HOME"] = str(home)
-        self.transport = JsonRpcProcess(command, Path(self._temporary_cwd.name), child_env)
+        app_server_args = (
+            ("--enable", "code_mode", "--enable", "code_mode_host")
+            if enable_optimizer_code_mode
+            else ()
+        )
+        self.transport = JsonRpcProcess(
+            command,
+            Path(self._temporary_cwd.name),
+            child_env,
+            app_server_args=app_server_args,
+        )
         self._initialize(system_prompt)
 
     def _checkpoint(self, method: str | None = None) -> None:
@@ -310,16 +366,27 @@ class CodexAppServer:
         model_result = self.transport.request(
             "model/list", {"includeHidden": True, "limit": 100}
         )
-        self.audit["model"] = require_model_catalog(model_result)
+        self.audit["model"] = require_model_catalog(
+            model_result,
+            model=self._model,
+            reasoning_effort=self._reasoning_effort,
+        )
         rate_limits = self._read_rate_limits()
-        buckets = rate_limits.get("rateLimitsByLimitId") if isinstance(rate_limits, Mapping) else None
-        self.audit["rate_limit_ids"] = sorted(buckets) if isinstance(buckets, Mapping) else []
+        buckets = (
+            rate_limits.get("rateLimitsByLimitId")
+            if isinstance(rate_limits, Mapping)
+            else None
+        )
+        self.audit["rate_limit_ids"] = (
+            sorted(buckets) if isinstance(buckets, Mapping) else []
+        )
 
         empty_cwd = str(Path(self._temporary_cwd.name).resolve())
+        self._expected_cwd = empty_cwd
         thread = self.transport.request(
             "thread/start",
             {
-                "model": "gpt-5.4",
+                "model": self._model,
                 "cwd": empty_cwd,
                 "approvalPolicy": "never",
                 "sandbox": "read-only",
@@ -342,7 +409,7 @@ class CodexAppServer:
         if sources:
             raise ProtocolError(f"unexpected discovered instruction sources: {sources}")
         observed_model = thread.get("model")
-        if observed_model != "gpt-5.4":
+        if observed_model != self._model:
             raise ProtocolError(f"thread model mismatch: {observed_model!r}")
         thread_value = thread.get("thread")
         if not isinstance(thread_value, Mapping) or not isinstance(
@@ -365,6 +432,123 @@ class CodexAppServer:
                 time.sleep(0.5 * (2**attempt))
         raise AssertionError("unreachable")
 
+    def _accept_thread_settings_update(self, params: Mapping[str, Any]) -> None:
+        """Verify the effective settings notification emitted by turn overrides."""
+        settings = params.get("threadSettings")
+        if params.get("threadId") != self._thread_id or not isinstance(
+            settings, Mapping
+        ):
+            raise ProtocolError("thread settings update is malformed or mis-scoped")
+        expected = {
+            "model": self._model,
+            "effort": self._reasoning_effort,
+            "approvalPolicy": "never",
+            "personality": "none",
+        }
+        for field, value in expected.items():
+            if settings.get(field) != value:
+                raise ProtocolError(
+                    f"thread settings drift for {field}: {settings.get(field)!r}"
+                )
+        sandbox = settings.get("sandboxPolicy")
+        if not isinstance(sandbox, Mapping) or sandbox.get("type") != "readOnly":
+            raise ProtocolError("thread settings drift for sandboxPolicy")
+        if self._expected_cwd is not None and settings.get("cwd") != self._expected_cwd:
+            raise ProtocolError("thread settings drift for cwd")
+        collaboration = settings.get("collaborationMode")
+        if isinstance(collaboration, Mapping):
+            collaboration_settings = collaboration.get("settings")
+            if isinstance(
+                collaboration_settings, Mapping
+            ) and collaboration_settings.get("developerInstructions") not in {None, ""}:
+                raise ProtocolError("thread settings introduced developer instructions")
+        self.audit["thread_settings_update_count"] += 1
+        self.audit["thread_settings_verified"] = True
+        self._checkpoint("thread/settings/updated:verified")
+
+    def _accept_warning(self, params: Mapping[str, Any]) -> None:
+        """Audit an official non-fatal runtime warning without retaining its text."""
+        thread_id = params.get("threadId")
+        message = params.get("message")
+        if thread_id not in {None, self._thread_id}:
+            raise ProtocolError("app-server warning is mis-scoped")
+        if not isinstance(message, str) or not message or len(message) > 10_000:
+            raise ProtocolError("app-server warning is malformed")
+        self.audit["warning_count"] += 1
+        self.audit["warning_sha256"].append(
+            hashlib.sha256(message.encode()).hexdigest()
+        )
+        self._checkpoint("warning:audited")
+
+    def verify_effective_thread_settings(self, timeout: float = 30) -> None:
+        """Exercise and verify app-server's settings lifecycle without a model turn."""
+        if self._thread_id is None or self._expected_cwd is None:
+            raise ProtocolError("app-server thread settings cannot be preflighted")
+        result = self.transport.request(
+            "thread/settings/update",
+            {
+                "threadId": self._thread_id,
+                "cwd": self._expected_cwd,
+                "approvalPolicy": "never",
+                "sandboxPolicy": {"type": "readOnly"},
+                "model": self._model,
+                "effort": self._reasoning_effort,
+                "personality": "none",
+            },
+            timeout=timeout,
+        )
+        if not isinstance(result, Mapping):
+            raise ProtocolError("thread/settings/update returned a malformed response")
+        deadline = time.monotonic() + timeout
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise ProtocolError("timed out verifying thread settings lifecycle")
+            try:
+                message = self.transport.inbox.get(timeout=min(remaining, 0.25))
+            except queue.Empty:
+                continue
+            if "transportError" in message:
+                raise ProtocolError(str(message["transportError"]))
+            if "id" in message:
+                raise ProtocolError(
+                    "unexpected app-server request during settings preflight"
+                )
+            method = message.get("method")
+            params = message.get("params") or {}
+            if method == "thread/settings/updated":
+                self._accept_thread_settings_update(params)
+                self.audit["thread_settings_preflight_verified"] = True
+                self._checkpoint("thread/settings/preflight:verified")
+                return
+            if method == "remoteControl/status/changed":
+                status = params.get("status")
+                self.audit["remote_control_statuses"].append(status)
+                if status != "disabled":
+                    self.audit["native_capability_denied"] = True
+                    raise ProtocolError(
+                        f"Codex remote control was not disabled: {status!r}"
+                    )
+                continue
+            if method == "warning":
+                try:
+                    self._accept_warning(params)
+                except ProtocolError:
+                    self.audit["native_capability_denied"] = True
+                    raise
+                continue
+            if method in {
+                "thread/started",
+                "thread/status/changed",
+                "thread/tokenUsage/updated",
+                "account/rateLimits/updated",
+            }:
+                continue
+            raise ProtocolError(
+                f"unexpected app-server notification during settings preflight: "
+                f"{method!r}"
+            )
+
     def start_turn(self, user_text: str) -> tuple[str | list[ToolCall], bool]:
         if not self._thread_id:
             raise ProtocolError("app-server thread was not initialized")
@@ -375,8 +559,8 @@ class CodexAppServer:
             {
                 "threadId": self._thread_id,
                 "input": [{"type": "text", "text": user_text}],
-                "model": "gpt-5.4",
-                "effort": "high",
+                "model": self._model,
+                "effort": self._reasoning_effort,
                 "personality": "none",
                 "approvalPolicy": "never",
                 "sandboxPolicy": {"type": "readOnly"},
@@ -391,7 +575,7 @@ class CodexAppServer:
         self._turn_id = turn["id"]
         self._final_text = None
         self._checkpoint("turn/start:accepted")
-        return self._wait_for_output()
+        return self._wait_for_output(timeout=self._turn_output_timeout_seconds)
 
     def continue_turn(
         self, message: ToolMessage | MultiToolMessage
@@ -402,7 +586,7 @@ class CodexAppServer:
             self.transport.respond(request_id, result)
             self.audit["tool_results_returned"] += 1
         self._checkpoint("item/tool/call:responded")
-        return self._wait_for_output()
+        return self._wait_for_output(timeout=self._turn_output_timeout_seconds)
 
     def require_complete_tool_delivery(self) -> None:
         """Fail unless every accepted dynamic call received its tau2 result."""
@@ -412,7 +596,9 @@ class CodexAppServer:
         complete = pending == 0 and accepted == returned
         self.audit["pending_dynamic_call_count"] = pending
         self.audit["tool_result_delivery_complete"] = complete
-        self._checkpoint("tool_delivery:verified" if complete else "tool_delivery:failed")
+        self._checkpoint(
+            "tool_delivery:verified" if complete else "tool_delivery:failed"
+        )
         if not complete:
             raise ProtocolError(
                 "incomplete dynamic-tool result delivery: "
@@ -420,10 +606,11 @@ class CodexAppServer:
             )
 
     def _wait_for_output(
-        self, timeout: float = TURN_OUTPUT_TIMEOUT_SECONDS
+        self, timeout: float | None = None
     ) -> tuple[str | list[ToolCall], bool]:
+        timeout = self._turn_output_timeout_seconds if timeout is None else timeout
         deadline = time.monotonic() + timeout
-        idle_deadline = time.monotonic() + TURN_OUTPUT_IDLE_TIMEOUT_SECONDS
+        idle_deadline = time.monotonic() + self._turn_output_idle_timeout_seconds
         calls: list[ToolCall] = []
         while True:
             remaining = deadline - time.monotonic()
@@ -438,7 +625,8 @@ class CodexAppServer:
                 raise ProtocolError(
                     "timed out waiting for Codex turn output; "
                     f"hard limit={timeout:g}s, idle limit="
-                    f"{TURN_OUTPUT_IDLE_TIMEOUT_SECONDS:g}s; last protocol method was "
+                    f"{self._turn_output_idle_timeout_seconds:g}s; "
+                    "last protocol method was "
                     f"{timeout_after!r}"
                 )
             try:
@@ -449,7 +637,7 @@ class CodexAppServer:
                 if calls:
                     return calls, False
                 continue
-            idle_deadline = time.monotonic() + TURN_OUTPUT_IDLE_TIMEOUT_SECONDS
+            idle_deadline = time.monotonic() + self._turn_output_idle_timeout_seconds
             if "transportError" in message:
                 raise ProtocolError(str(message["transportError"]))
             method = message.get("method")
@@ -482,15 +670,33 @@ class CodexAppServer:
                         f"Codex remote control was not disabled: {status!r}"
                     )
                 continue
+            if method == "thread/settings/updated":
+                try:
+                    self._accept_thread_settings_update(params)
+                except ProtocolError:
+                    self.audit["native_capability_denied"] = True
+                    raise
+                continue
+            if method == "warning":
+                try:
+                    self._accept_warning(params)
+                except ProtocolError:
+                    self.audit["native_capability_denied"] = True
+                    raise
+                continue
             if method in {"item/started", "item/completed"}:
                 item = params.get("item")
                 if not isinstance(item, Mapping):
                     raise ProtocolError(f"{method} contained no item")
                 try:
-                    reject_native_item(item)
+                    reject_native_item(item, self._allowed_item_types)
                 except ProtocolError:
                     self.audit["native_capability_denied"] = True
                     raise
+                if item.get("type") == "contextCompaction":
+                    if method == "item/completed":
+                        self.audit["context_compaction_count"] += 1
+                    continue
                 if (
                     method == "item/completed"
                     and item.get("type") == "agentMessage"

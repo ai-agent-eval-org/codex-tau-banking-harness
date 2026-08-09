@@ -89,23 +89,39 @@ task_102
   validated maximum; do not increase it without
   a separately authorized, bounded fixed-matrix scaling validation. Never run
   one combined 97-task matrix or submit to a leaderboard.
+- The standalone `codex-tau optimize` command is model-bearing and likewise
+  requires fresh, explicit authorization for one exact train packet and one
+  optimizer attempt. Its presence is not standing authority. It must use a
+  fresh ephemeral app-server thread, personal ChatGPT authentication,
+  GPT-5.6-Luna/max, no Platform API key, and no evidence outside the fixed train
+  packet. Its optimizer-only local Code Mode host may orchestrate exactly the
+  seven audited packet tools; native shell, filesystem, web, memory, apps,
+  plugins, and subagents remain disabled. It may emit one ignored local
+  candidate bundle; it must not modify the active optimized prompt, run an
+  evaluation, select candidates, publish artifacts, or authorize a later run.
 - An optimized prompt artifact and experiment config may be authored only
   after the fresh vanilla train run has completed. The prompt must be derived
   only from those train traces, then its repo-relative path and SHA-256 must be
-  frozen before an evaluation. The current Sol prompt was produced once from
-  a leakage-safe export of the 48 train traces. Its finalized adaptive retest,
-  `optimized-test-alltools-20260809T033050Z--recovery-bb161af26fd2`, scored
-  19/49 after one separately authorized missing-only infrastructure retry. The
-  manifest proves the original 48 completed rows were preserved and that no
-  full-matrix rerun occurred. Both authorizations are consumed; no active
-  recovery record is present. The result is not a pristine held-out
+  frozen before an evaluation. The current Luna prompt was produced once from
+  the hash-pinned export of the 48 train traces and promoted byte-for-byte. Its
+  authorized adaptive retest, `optimized-test-alltools-20260809T155235Z`,
+  completed all 49 simulation attempts but did not finalize: 46 rows were
+  graded (18 pass, 28 fail), while trial-zero tasks `task_027`, `task_037`, and
+  `task_041` ended in the same empty-assistant-message infrastructure error and
+  have no reward. Therefore the Luna prompt has no authoritative 49-task score;
+  18/46 (39.1304%) is provisional only. The original authorization is consumed
+  and no retry is authorized. The previously active Sol prompt's historical
+  adaptive retest scored 19/49 after one separately authorized missing-only
+  retry. Every result is an adaptive retest, not a pristine held-out
   evaluation.
 - Do not commit raw runs, credentials, embedding caches, or large artifacts.
-  The sole explicit exception is the already-published, credential-scanned
-  Option A test file at
-  `runs/vanilla-test-alltools-20260808T215353Z/results.json`, authorized for
-  internal τ2 metric calculation. It is not submission authorization. Do not
-  add its adapter audits or treat the exception as authority for another run.
+  The narrow tracked exceptions are the credential-scanned Option A and Option
+  B test `results.json` files and the explicitly authorized, credential-scanned
+  Luna checkpoint
+  `runs/optimized-test-alltools-20260809T155235Z/results.json`, retained for
+  internal metric calculation. They are not submission authorization. Do not
+  add their adapter audits, commit standalone optimizer candidates, or treat
+  any exception as authority for another run.
 - The presence of `resume-interrupted` implementation is not authorization to
   execute it. An interrupted trajectory may be retried only after fresh,
   explicit human authorization for that exact source run and one retry, encoded
