@@ -37,6 +37,12 @@ network, memory, MCP, apps, plugins, and subagents remain disabled for both.
 Context compaction is the optimizer's sole added app-server lifecycle item and
 is counted; the evaluated-agent allowlist does not accept it.
 
+A malformed optimizer read or ledger call is returned as a failed dynamic-tool
+result so the same turn can correct an inventory reference. The final manifest
+records only hashes of its error and arguments. Submission errors remain fatal,
+and successful output still requires complete packet reads, all 65 ledger
+entries, a complete ledger reread, and exactly one accepted submission.
+
 Official generic `warning` notifications are accepted only when their payload
 is well-formed and scoped to the current thread. They are non-fatal lifecycle
 diagnostics, not capabilities. The audit retains only their count and SHA-256,

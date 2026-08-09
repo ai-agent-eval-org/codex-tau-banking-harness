@@ -59,7 +59,10 @@ submit_optimization exactly once with the complete optimization report and the
 complete replacement system prompt. Use the isolated Code Mode entrypoint only
 to invoke the seven supplied packet tools. Do not request other data or tools,
 produce intermediate prompt candidates, or perform an evaluation. After the
-submission is accepted, return a short completion message.
+submission is accepted, return a short completion message. If a read or ledger
+call returns a recoverable argument error, correct it from inspect_packet's
+exact inventory; never invent trace references, tool names, filenames, or
+offsets.
 """
 
 
@@ -605,8 +608,35 @@ class OptimizerPacketTools(ToolKitBase):
         }
 
 
-def _tool_result(call: ToolCall, tool: Tool) -> ToolMessage:
-    result = tool(**dict(call.arguments))
+def _tool_result(
+    call: ToolCall,
+    tool: Tool,
+    recoverable_errors: list[dict[str, str]] | None = None,
+) -> ToolMessage:
+    try:
+        result = tool(**dict(call.arguments))
+    except OptimizerRunError as exc:
+        if call.name == "submit_optimization":
+            raise
+        error_text = str(exc)
+        if recoverable_errors is not None:
+            recoverable_errors.append(
+                {
+                    "tool": call.name,
+                    "error_sha256": _sha256_text(error_text),
+                    "arguments_sha256": canonical_hash(call.arguments),
+                }
+            )
+        return ToolMessage(
+            id=call.id,
+            role="tool",
+            content=json.dumps(
+                {"error": error_text, "recoverable": True},
+                separators=(",", ":"),
+            ),
+            requestor="assistant",
+            error=True,
+        )
     content = json.dumps(result, ensure_ascii=False, separators=(",", ":"))
     return ToolMessage(
         id=call.id,
@@ -618,13 +648,15 @@ def _tool_result(call: ToolCall, tool: Tool) -> ToolMessage:
 
 
 def _execute_calls(
-    calls: list[ToolCall], tools: Mapping[str, Tool]
+    calls: list[ToolCall],
+    tools: Mapping[str, Tool],
+    recoverable_errors: list[dict[str, str]] | None = None,
 ) -> ToolMessage | MultiToolMessage:
     messages: list[ToolMessage] = []
     for call in calls:
         tool = tools.get(call.name)
         _require(tool is not None, f"optimizer requested unknown tool: {call.name}")
-        messages.append(_tool_result(call, tool))
+        messages.append(_tool_result(call, tool, recoverable_errors))
     if len(messages) == 1:
         return messages[0]
     return MultiToolMessage(role="tool", tool_messages=messages)
@@ -791,6 +823,7 @@ def run_optimizer(
         toolkit = OptimizerPacketTools(packet_dir)
         tool_map = toolkit.get_tools()
         catalog = ToolCatalog(tool_map.values())
+        recoverable_tool_errors: list[dict[str, str]] = []
         with _runtime(repo_root=repo_root, toolkit=toolkit) as runtime:
             runtime.verify_effective_thread_settings()
             value, complete = runtime.start_turn(BOOTSTRAP_INSTRUCTION)
@@ -804,7 +837,9 @@ def run_optimizer(
                     handled_calls <= MAX_TOOL_CALLS,
                     "optimizer tool-call limit exceeded",
                 )
-                value, complete = runtime.continue_turn(_execute_calls(value, tool_map))
+                value, complete = runtime.continue_turn(
+                    _execute_calls(value, tool_map, recoverable_tool_errors)
+                )
             _require(isinstance(value, str), "optimizer final response is not text")
             runtime.require_complete_tool_delivery()
             audit = dict(runtime.audit)
@@ -857,6 +892,8 @@ def run_optimizer(
                 == 1,
                 "automatic_retry": False,
                 "tool_calls": handled_calls,
+                "recoverable_tool_error_count": len(recoverable_tool_errors),
+                "recoverable_tool_errors": recoverable_tool_errors,
                 "final_response_sha256": _sha256_text(value),
             },
             "source": {

@@ -62,6 +62,10 @@ intentional and does not make the evidence incomplete.
    complete replacement prompt. The harness rejects submission until coverage
    is complete and saves the accepted values itself.
 
+If a read or ledger tool returns a recoverable argument error, use the exact
+inventory from `inspect_packet`, correct that call, and continue. Do not guess
+or synthesize trace references, tool names, filenames, or offsets.
+
 Do not treat the coverage tools or ledger as editable prompt surfaces. Do not
 ask for native capabilities or attempt to locate other files.
 

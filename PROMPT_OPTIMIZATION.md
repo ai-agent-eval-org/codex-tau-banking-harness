@@ -26,7 +26,7 @@ evaluation, validation feedback, test feedback, or iterative revision.
 is now the instruction used by the standalone `codex-tau optimize` command.
 Its SHA-256 is:
 
-`0c61b7d1d593a4473a1b0ba3ed88ea7fe1c9f89bf396bfd23f415c2fce2d5b69`
+`73e30696eef8ade7fc2079c85c40374c1e6f18321aa3442ecb9a6c18116a4992`
 
 The instruction makes tool descriptions and schemas first-class evidence. It
 requires complete trace and tool coverage, causal failure analysis, successful
@@ -58,7 +58,10 @@ filesystem, web, network, memory, MCP, app, plugin, or subagent capability. It
 requires all 48 traces and all 17 tool contracts to be fully read and analyzed,
 then requires the complete external ledger to be reread before accepting one
 report and one replacement prompt. Trace contents are untrusted evidence, not
-instructions. App-server context compaction is counted as a lifecycle event.
+instructions. A malformed non-submission packet call is returned to the same
+turn for correction and recorded by hashed tool name, error, and arguments in
+the final manifest; an invalid submission remains fatal. App-server context
+compaction is counted as a lifecycle event.
 
 The command has no candidate search, automatic retry, or evaluation step. Its
 ignored `optimizer-runs/one-shot-<timestamp>/` bundle is a candidate only; the

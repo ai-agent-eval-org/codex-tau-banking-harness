@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 
 import pytest
+from tau2.data_model.message import ToolCall, ToolMessage
 
 from codex_tau.auth import AuthError, require_model_catalog
 from codex_tau.optimizer import (
@@ -14,6 +15,7 @@ from codex_tau.optimizer import (
     PACKET_FILES,
     OptimizerPacketTools,
     OptimizerRunError,
+    _execute_calls,
     _write_non_submission_bundle,
     validate_optimized_prompt,
 )
@@ -178,6 +180,55 @@ def test_optimizer_tools_require_complete_coverage_before_one_submission(
     assert coverage["submission_count"] == 1
     with pytest.raises(OptimizerRunError, match="already submitted"):
         toolkit.submit_optimization("report " * 100, candidate_prompt())
+
+
+def test_non_submission_tool_argument_error_is_returned_for_correction(
+    tmp_path: Path,
+) -> None:
+    toolkit = OptimizerPacketTools(synthetic_packet(tmp_path))
+    toolkit.inspect_packet()
+    errors: list[dict[str, str]] = []
+    result = _execute_calls(
+        [
+            ToolCall(
+                id="call-1",
+                name="read_trace",
+                arguments={"trace_ref": "train_trace_049"},
+                requestor="assistant",
+            )
+        ],
+        toolkit.get_tools(),
+        errors,
+    )
+    assert isinstance(result, ToolMessage)
+    assert result.error is True
+    assert json.loads(result.content or "null") == {
+        "error": "unknown or unauthorized trace",
+        "recoverable": True,
+    }
+    assert len(errors) == 1
+    assert errors[0]["tool"] == "read_trace"
+    assert set(errors[0]) == {"tool", "error_sha256", "arguments_sha256"}
+
+
+def test_invalid_submission_remains_fatal(tmp_path: Path) -> None:
+    toolkit = OptimizerPacketTools(synthetic_packet(tmp_path))
+    with pytest.raises(OptimizerRunError, match="coverage is incomplete"):
+        _execute_calls(
+            [
+                ToolCall(
+                    id="call-1",
+                    name="submit_optimization",
+                    arguments={
+                        "optimization_report": "report " * 100,
+                        "optimized_prompt": candidate_prompt(),
+                    },
+                    requestor="assistant",
+                )
+            ],
+            toolkit.get_tools(),
+            [],
+        )
 
 
 def test_trace_analysis_requires_full_read_and_correct_outcome_class(
