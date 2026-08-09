@@ -27,7 +27,8 @@ denied native capability. Only runtime dynamic tools derived from τ-bench
 
 The standalone optimizer uses the same sanitized child environment, empty
 temporary working directory, empty developer instructions, instruction-source
-rejection, and reroute detection. Its dynamic catalog contains only seven
+rejection, reroute detection, and field-by-field verification of app-server's
+effective turn-settings notification. Its dynamic catalog contains only seven
 packet-specific tools for bounded evidence reads, external analysis-ledger
 writes/reads, and one final submission. Context compaction is the sole added
 app-server item type and is counted only as a lifecycle event; it grants no

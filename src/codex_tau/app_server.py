@@ -257,6 +257,7 @@ class CodexAppServer:
         self._thread_id: str | None = None
         self._turn_id: str | None = None
         self._final_text: str | None = None
+        self._expected_cwd: str | None = None
         self._audit_sink = audit_sink
         self._model = model
         self._reasoning_effort = reasoning_effort
@@ -282,6 +283,8 @@ class CodexAppServer:
                 APP_SERVER_STREAM_READER_LIMIT_BYTES
             ),
             "tool_results_returned": 0,
+            "thread_settings_update_count": 0,
+            "thread_settings_verified": False,
             "turns_completed": 0,
             "turns_started": 0,
         }
@@ -346,6 +349,7 @@ class CodexAppServer:
         )
 
         empty_cwd = str(Path(self._temporary_cwd.name).resolve())
+        self._expected_cwd = empty_cwd
         thread = self.transport.request(
             "thread/start",
             {
@@ -394,6 +398,40 @@ class CodexAppServer:
                     raise
                 time.sleep(0.5 * (2**attempt))
         raise AssertionError("unreachable")
+
+    def _accept_thread_settings_update(self, params: Mapping[str, Any]) -> None:
+        """Verify the effective settings notification emitted by turn overrides."""
+        settings = params.get("threadSettings")
+        if params.get("threadId") != self._thread_id or not isinstance(
+            settings, Mapping
+        ):
+            raise ProtocolError("thread settings update is malformed or mis-scoped")
+        expected = {
+            "model": self._model,
+            "effort": self._reasoning_effort,
+            "approvalPolicy": "never",
+            "personality": "none",
+        }
+        for field, value in expected.items():
+            if settings.get(field) != value:
+                raise ProtocolError(
+                    f"thread settings drift for {field}: {settings.get(field)!r}"
+                )
+        sandbox = settings.get("sandboxPolicy")
+        if not isinstance(sandbox, Mapping) or sandbox.get("type") != "readOnly":
+            raise ProtocolError("thread settings drift for sandboxPolicy")
+        if self._expected_cwd is not None and settings.get("cwd") != self._expected_cwd:
+            raise ProtocolError("thread settings drift for cwd")
+        collaboration = settings.get("collaborationMode")
+        if isinstance(collaboration, Mapping):
+            collaboration_settings = collaboration.get("settings")
+            if isinstance(
+                collaboration_settings, Mapping
+            ) and collaboration_settings.get("developerInstructions") not in {None, ""}:
+                raise ProtocolError("thread settings introduced developer instructions")
+        self.audit["thread_settings_update_count"] += 1
+        self.audit["thread_settings_verified"] = True
+        self._checkpoint("thread/settings/updated:verified")
 
     def start_turn(self, user_text: str) -> tuple[str | list[ToolCall], bool]:
         if not self._thread_id:
@@ -515,6 +553,13 @@ class CodexAppServer:
                     raise ProtocolError(
                         f"Codex remote control was not disabled: {status!r}"
                     )
+                continue
+            if method == "thread/settings/updated":
+                try:
+                    self._accept_thread_settings_update(params)
+                except ProtocolError:
+                    self.audit["native_capability_denied"] = True
+                    raise
                 continue
             if method in {"item/started", "item/completed"}:
                 item = params.get("item")

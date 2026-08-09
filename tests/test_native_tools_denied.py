@@ -105,6 +105,103 @@ def test_optimizer_allowlist_counts_completed_context_compaction() -> None:
     assert runtime.audit["context_compaction_count"] == 1
 
 
+def test_exact_thread_settings_update_is_verified() -> None:
+    transport = FakeTransport(
+        [
+            {
+                "method": "thread/settings/updated",
+                "params": {
+                    "threadId": "thread-1",
+                    "threadSettings": {
+                        "cwd": "/tmp/empty-codex-cwd",
+                        "approvalPolicy": "never",
+                        "sandboxPolicy": {"type": "readOnly"},
+                        "model": "gpt-5.6-sol",
+                        "effort": "max",
+                        "personality": "none",
+                        "collaborationMode": {
+                            "mode": "default",
+                            "settings": {"developerInstructions": ""},
+                        },
+                    },
+                },
+            },
+            {
+                "method": "item/completed",
+                "params": {
+                    "item": {
+                        "type": "agentMessage",
+                        "phase": "final_answer",
+                        "text": "done",
+                    }
+                },
+            },
+            {
+                "method": "turn/completed",
+                "params": {"turn": {"status": "completed"}},
+            },
+        ]
+    )
+    runtime = CodexAppServer(
+        repo_root=Path("."),
+        tools=[],
+        system_prompt="prompt",
+        model="gpt-5.6-sol",
+        reasoning_effort="max",
+        transport=transport,  # type: ignore[arg-type]
+    )
+    runtime._thread_id = "thread-1"
+    runtime._expected_cwd = "/tmp/empty-codex-cwd"
+    assert runtime._wait_for_output() == ("done", True)
+    assert runtime.audit["thread_settings_update_count"] == 1
+    assert runtime.audit["thread_settings_verified"] is True
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("model", "gpt-5.4"),
+        ("effort", "high"),
+        ("approvalPolicy", "on-request"),
+        ("personality", "friendly"),
+        ("sandboxPolicy", {"type": "workspaceWrite"}),
+    ],
+)
+def test_thread_settings_drift_fails_closed(field: str, value: object) -> None:
+    settings = {
+        "cwd": "/tmp/empty-codex-cwd",
+        "approvalPolicy": "never",
+        "sandboxPolicy": {"type": "readOnly"},
+        "model": "gpt-5.6-sol",
+        "effort": "max",
+        "personality": "none",
+    }
+    settings[field] = value
+    runtime = CodexAppServer(
+        repo_root=Path("."),
+        tools=[],
+        system_prompt="prompt",
+        model="gpt-5.6-sol",
+        reasoning_effort="max",
+        transport=FakeTransport(
+            [
+                {
+                    "method": "thread/settings/updated",
+                    "params": {
+                        "threadId": "thread-1",
+                        "threadSettings": settings,
+                    },
+                }
+            ]
+        ),  # type: ignore[arg-type]
+    )
+    runtime._thread_id = "thread-1"
+    runtime._expected_cwd = "/tmp/empty-codex-cwd"
+    with pytest.raises(ProtocolError, match="thread settings drift"):
+        runtime._wait_for_output()
+    assert runtime.audit["native_capability_denied"] is True
+
+
 def test_disabled_remote_control_status_is_lifecycle_only() -> None:
     transport = FakeTransport(
         [
