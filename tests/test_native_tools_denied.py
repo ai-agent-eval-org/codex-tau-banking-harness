@@ -42,6 +42,69 @@ def test_tau_dynamic_tool_item_is_the_only_tool_item_allowed() -> None:
     reject_native_item({"type": "dynamicToolCall"})
 
 
+def test_context_compaction_requires_an_explicit_non_evaluation_allowlist() -> None:
+    with pytest.raises(ProtocolError, match="contextCompaction"):
+        reject_native_item({"type": "contextCompaction"})
+    reject_native_item(
+        {"type": "contextCompaction"},
+        frozenset(
+            {
+                "userMessage",
+                "agentMessage",
+                "reasoning",
+                "dynamicToolCall",
+                "contextCompaction",
+            }
+        ),
+    )
+
+
+def test_optimizer_allowlist_counts_completed_context_compaction() -> None:
+    transport = FakeTransport(
+        [
+            {
+                "method": "item/started",
+                "params": {"item": {"type": "contextCompaction"}},
+            },
+            {
+                "method": "item/completed",
+                "params": {"item": {"type": "contextCompaction"}},
+            },
+            {
+                "method": "item/completed",
+                "params": {
+                    "item": {
+                        "type": "agentMessage",
+                        "phase": "final_answer",
+                        "text": "done",
+                    }
+                },
+            },
+            {
+                "method": "turn/completed",
+                "params": {"turn": {"status": "completed"}},
+            },
+        ]
+    )
+    runtime = CodexAppServer(
+        repo_root=Path("."),
+        tools=[],
+        system_prompt="prompt",
+        transport=transport,  # type: ignore[arg-type]
+        allowed_item_types=frozenset(
+            {
+                "userMessage",
+                "agentMessage",
+                "reasoning",
+                "dynamicToolCall",
+                "contextCompaction",
+            }
+        ),
+    )
+    assert runtime._wait_for_output() == ("done", True)
+    assert runtime.audit["context_compaction_count"] == 1
+
+
 def test_disabled_remote_control_status_is_lifecycle_only() -> None:
     transport = FakeTransport(
         [

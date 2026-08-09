@@ -495,9 +495,7 @@ def _build_run_config(
         llm_args_agent.update(
             {
                 "system_prompt_path": experiment["system_prompt_path"],
-                "system_prompt_file_sha256": experiment[
-                    "system_prompt_file_sha256"
-                ],
+                "system_prompt_file_sha256": experiment["system_prompt_file_sha256"],
             }
         )
     return TextRunConfig(
@@ -810,6 +808,17 @@ def _parser() -> argparse.ArgumentParser:
     resume = subparsers.add_parser("resume-interrupted")
     resume.add_argument("experiment", type=Path)
     resume.add_argument("source_run_dir", type=Path)
+    optimize = subparsers.add_parser(
+        "optimize",
+        help="run one train-only GPT-5.6-Sol prompt optimization",
+    )
+    optimize.add_argument(
+        "--source-run",
+        type=Path,
+        default=Path("runs/vanilla-train-alltools-20260808T212330Z"),
+    )
+    optimize.add_argument("--output-dir", type=Path)
+    optimize.add_argument("--preflight-only", action="store_true")
     return parser
 
 
@@ -821,9 +830,25 @@ def main(argv: list[str] | None = None) -> None:
         elif arguments.command == "run":
             output = run_experiment(arguments.experiment)
             print(f"verified local evaluation artifacts: {output}")
-        else:
+        elif arguments.command == "resume-interrupted":
             output = resume_interrupted(arguments.experiment, arguments.source_run_dir)
             print(f"verified local recovery artifacts: {output}")
+        else:
+            from .optimizer import optimizer_preflight, run_optimizer
+
+            if arguments.preflight_only:
+                result = optimizer_preflight(
+                    repo_root=_repo_root(),
+                    source_run=arguments.source_run,
+                )
+                print(json.dumps(result, indent=2, sort_keys=True))
+            else:
+                output = run_optimizer(
+                    repo_root=_repo_root(),
+                    source_run=arguments.source_run,
+                    output_dir=arguments.output_dir,
+                )
+                print(f"verified local optimizer artifacts: {output}")
     except Exception as exc:
         print(f"codex-tau: {exc}", file=sys.stderr)
         raise SystemExit(1) from exc

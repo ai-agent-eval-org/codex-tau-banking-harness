@@ -158,9 +158,10 @@ train, and sorting each stored partition. Prompt iteration and human labeling
 must use train only; the test partition is aggregate evaluation only.
 
 The commands below are exact reproducibility recipes, not standing permission
-for model inference. `preflight` is model-free. Every new `run` or
-`resume-interrupted` invocation requires fresh human authorization for its exact
-local scope and expected cost; completed one-shot authorizations are consumed.
+for model inference. `preflight` and `optimize --preflight-only` start no model
+turn. Every new `run`, `resume-interrupted`, or `optimize` inference invocation
+requires fresh human authorization for its exact local scope and expected cost;
+completed one-shot authorizations are consumed.
 
 ## Validation history
 
@@ -204,7 +205,35 @@ with SHA-256
 It is not a leaderboard bundle, creates no submission authority, and excludes
 the local adapter-audit directory and authentication artifacts.
 
-## One-shot train-trace prompt pass
+## Standalone one-shot optimizer
+
+The default command prepares the leakage-safe packet internally and runs one
+fresh ephemeral Codex app-server thread:
+
+```bash
+uv run codex-tau optimize --preflight-only
+uv run codex-tau optimize
+```
+
+The inference command has no required arguments. It is fixed to the retained
+48-trace train run, the full canonical baseline prompt, all 17 authoritative
+tool contracts, the checked-in optimizer instruction, GPT-5.6-Sol/max, and the
+existing personal ChatGPT authentication. The child process receives no
+Platform API key, developer instruction, instruction source, native Codex
+capability, test evidence, or previous optimized prompt. Its seven dynamic
+tools can only inspect the packet, maintain and reread a complete analysis
+ledger, and submit one report plus one prompt. App-server context compaction is
+accepted only as a counted lifecycle event.
+
+Verified output is written below the ignored local directory
+`optimizer-runs/one-shot-<timestamp>/`. It contains a report, a candidate
+`optimized.md`, and an audit manifest. The command does not change the active
+[`prompts/banking_knowledge/optimized.md`](prompts/banking_knowledge/optimized.md),
+run τ-bench, evaluate a candidate, select among candidates, publish artifacts,
+or create authority for any later evaluation. Its presence is not standing
+permission to run it.
+
+## Historical one-shot train-trace prompt pass
 
 Only after `vanilla-train-alltools` finished were its 48 saved trajectories
 read for prompt work. The method was a single generalizing reflection pass,
@@ -224,13 +253,14 @@ uv run codex-tau preflight experiments/optimized-test-alltools.toml
 uv run codex-tau run experiments/optimized-test-alltools.toml
 ```
 
-The current prompt was synthesized once by GPT-5.6-Sol from a leakage-safe
+The active prompt was synthesized once by GPT-5.6-Sol from a leakage-safe
 packet containing only the 48 completed train trajectories, canonical
-baseline, and all 17 authoritative tool contracts. The exact optimizer
-instruction, packet exporter, evidence hashes, frozen prompt hashes, and
-one-shot boundary are documented in
-[PROMPT_OPTIMIZATION.md](PROMPT_OPTIMIZATION.md). The previous optimized run
-was deleted as a superseded demo artifact and is not evidence for this prompt.
+baseline, and all 17 authoritative tool contracts. Its historical optimizer
+instruction is pinned by commit and hash in
+[PROMPT_OPTIMIZATION.md](PROMPT_OPTIMIZATION.md); the current instruction file
+drives the standalone command and must not be misrepresented as the bytes that
+produced this already-frozen prompt. The previous instruction-only optimized
+run was deleted as a superseded demo artifact and is not evidence for it.
 
 The final adaptive retest is
 `optimized-test-alltools-20260809T033050Z--recovery-bb161af26fd2`. It scored
@@ -280,12 +310,14 @@ pinned τ-bench v1.0.1 data.
 
 ## Artifacts and leaderboard scope
 
-Local output is written below `runs/<experiment>-<timestamp>/` and includes
+Local evaluation output is written below `runs/<experiment>-<timestamp>/` and includes
 τ-bench's incrementally checkpointed `results.json`, one per-trajectory adapter
 audit keyed by task and simulation seed, and `manifest.json`. Local runs are
-ignored except for the explicitly authorized Option A `results.json` described
-above. Auth state, raw databases, embedding caches, and credentials are never
-copied or committed.
+ignored except for the explicitly authorized, credential-scanned Option A and
+Option B `results.json` files already tracked on this branch. Their adapter
+audits and authentication artifacts remain local. Optimizer candidates under
+`optimizer-runs/` are also ignored. Auth state, raw databases, embedding
+caches, and credentials are never copied or committed.
 
 The frozen test-partition results are local, single-trial estimates, not
 official full-domain leaderboard scores. They are not leaderboard-valid and

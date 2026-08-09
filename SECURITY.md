@@ -8,7 +8,9 @@ retrieval profile. Before spawning Codex, the harness removes
 OpenAI/Codex API-key and access-token variables, creates an isolated temporary
 `CODEX_HOME`, and requires app-server `account/read` to report a managed
 ChatGPT account. An API-key account, missing account, model fallback, or absent
-GPT-5.4/high entitlement aborts the run.
+required entitlement aborts the run. Evaluated banking agents remain fixed to
+GPT-5.4/high; the separate one-shot optimizer requires GPT-5.6-Sol/max through
+the same personal ChatGPT boundary.
 
 The temporary Codex home links to the existing auth file; it never copies,
 prints, serializes, or commits its contents. The repository ignores `.env*`,
@@ -23,12 +25,23 @@ on any filesystem, plan, or other app-server request/item that indicates a
 denied native capability. Only runtime dynamic tools derived from τ-bench
 `Tool` objects are accepted.
 
+The standalone optimizer uses the same sanitized child environment, empty
+temporary working directory, empty developer instructions, instruction-source
+rejection, and reroute detection. Its dynamic catalog contains only seven
+packet-specific tools for bounded evidence reads, external analysis-ledger
+writes/reads, and one final submission. Context compaction is the sole added
+app-server item type and is counted only as a lifecycle event; it grants no
+filesystem, network, memory, or other native capability. The evaluated-agent
+allowlist does not accept context compaction.
+
 ## Artifact redaction
 
 Manifests contain hashes, non-secret plan/rate-limit metadata, version and Git
 provenance, task IDs, and artifact paths. They reject secret-looking key names
-or values. Do not attach raw environment dumps, Codex auth caches, cookies,
-OAuth tokens, or Platform keys to an issue or pull request.
+or values. Optimizer reports and candidates remain under the ignored local
+`optimizer-runs/` directory. Do not attach raw environment dumps, Codex auth
+caches, cookies, OAuth tokens, Platform keys, train traces, or optimizer
+artifacts to an issue or pull request.
 
 If a credential is ever written to a run artifact, stop the run, revoke and
 rotate the credential at its provider, remove the artifact from disk and any

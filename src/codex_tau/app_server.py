@@ -33,7 +33,9 @@ class ProtocolError(RuntimeError):
     """The app-server emitted a denied or malformed protocol message."""
 
 
-_ALLOWED_ITEM_TYPES = {"userMessage", "agentMessage", "reasoning", "dynamicToolCall"}
+_ALLOWED_ITEM_TYPES = frozenset(
+    {"userMessage", "agentMessage", "reasoning", "dynamicToolCall"}
+)
 # App-server lifecycle events echo complete dynamic-tool results. The banking
 # corpus is currently under 8 MiB, so 64 MiB is deliberately generous while
 # still bounding memory if a shell command produces pathological output. This
@@ -43,10 +45,13 @@ TURN_OUTPUT_TIMEOUT_SECONDS = 600
 TURN_OUTPUT_IDLE_TIMEOUT_SECONDS = 120
 
 
-def reject_native_item(item: Mapping[str, Any]) -> None:
+def reject_native_item(
+    item: Mapping[str, Any],
+    allowed_item_types: frozenset[str] = _ALLOWED_ITEM_TYPES,
+) -> None:
     """Reject every app-server item outside the benchmark's narrow protocol."""
     item_type = item.get("type")
-    if item_type not in _ALLOWED_ITEM_TYPES:
+    if item_type not in allowed_item_types:
         raise ProtocolError(f"denied native Codex item observed: {item_type!r}")
 
 
@@ -234,6 +239,11 @@ class CodexAppServer:
         repo_root: Path,
         tools: list[Any],
         system_prompt: str,
+        model: str = "gpt-5.4",
+        reasoning_effort: str = "high",
+        allowed_item_types: frozenset[str] = _ALLOWED_ITEM_TYPES,
+        turn_output_timeout_seconds: float = TURN_OUTPUT_TIMEOUT_SECONDS,
+        turn_output_idle_timeout_seconds: float = TURN_OUTPUT_IDLE_TIMEOUT_SECONDS,
         auth_file: Path | None = None,
         transport: JsonRpcProcess | None = None,
         audit_sink: Callable[[Mapping[str, Any]], None] | None = None,
@@ -248,16 +258,24 @@ class CodexAppServer:
         self._turn_id: str | None = None
         self._final_text: str | None = None
         self._audit_sink = audit_sink
+        self._model = model
+        self._reasoning_effort = reasoning_effort
+        self._allowed_item_types = allowed_item_types
+        self._turn_output_timeout_seconds = turn_output_timeout_seconds
+        self._turn_output_idle_timeout_seconds = turn_output_idle_timeout_seconds
         self.audit: dict[str, Any] = {
             "base_instructions_sha256": hashlib.sha256(
                 system_prompt.encode()
             ).hexdigest(),
+            "context_compaction_count": 0,
             "developer_instructions_empty": True,
             "dynamic_call_count": 0,
             "dynamic_call_names": [],
             "last_protocol_method": None,
             "native_capability_denied": False,
             "model_rerouted": False,
+            "requested_model": model,
+            "reasoning_effort": reasoning_effort,
             "protocol_event_count": 0,
             "remote_control_statuses": [],
             "transport_stream_reader_limit_bytes": (
@@ -284,7 +302,9 @@ class CodexAppServer:
         shutil.copyfile(repo_root / "codex" / "config.toml", home / "config.toml")
         os.symlink(source_auth.resolve(), home / "auth.json")
         child_env["CODEX_HOME"] = str(home)
-        self.transport = JsonRpcProcess(command, Path(self._temporary_cwd.name), child_env)
+        self.transport = JsonRpcProcess(
+            command, Path(self._temporary_cwd.name), child_env
+        )
         self._initialize(system_prompt)
 
     def _checkpoint(self, method: str | None = None) -> None:
@@ -310,16 +330,26 @@ class CodexAppServer:
         model_result = self.transport.request(
             "model/list", {"includeHidden": True, "limit": 100}
         )
-        self.audit["model"] = require_model_catalog(model_result)
+        self.audit["model"] = require_model_catalog(
+            model_result,
+            model=self._model,
+            reasoning_effort=self._reasoning_effort,
+        )
         rate_limits = self._read_rate_limits()
-        buckets = rate_limits.get("rateLimitsByLimitId") if isinstance(rate_limits, Mapping) else None
-        self.audit["rate_limit_ids"] = sorted(buckets) if isinstance(buckets, Mapping) else []
+        buckets = (
+            rate_limits.get("rateLimitsByLimitId")
+            if isinstance(rate_limits, Mapping)
+            else None
+        )
+        self.audit["rate_limit_ids"] = (
+            sorted(buckets) if isinstance(buckets, Mapping) else []
+        )
 
         empty_cwd = str(Path(self._temporary_cwd.name).resolve())
         thread = self.transport.request(
             "thread/start",
             {
-                "model": "gpt-5.4",
+                "model": self._model,
                 "cwd": empty_cwd,
                 "approvalPolicy": "never",
                 "sandbox": "read-only",
@@ -342,7 +372,7 @@ class CodexAppServer:
         if sources:
             raise ProtocolError(f"unexpected discovered instruction sources: {sources}")
         observed_model = thread.get("model")
-        if observed_model != "gpt-5.4":
+        if observed_model != self._model:
             raise ProtocolError(f"thread model mismatch: {observed_model!r}")
         thread_value = thread.get("thread")
         if not isinstance(thread_value, Mapping) or not isinstance(
@@ -375,8 +405,8 @@ class CodexAppServer:
             {
                 "threadId": self._thread_id,
                 "input": [{"type": "text", "text": user_text}],
-                "model": "gpt-5.4",
-                "effort": "high",
+                "model": self._model,
+                "effort": self._reasoning_effort,
                 "personality": "none",
                 "approvalPolicy": "never",
                 "sandboxPolicy": {"type": "readOnly"},
@@ -391,7 +421,7 @@ class CodexAppServer:
         self._turn_id = turn["id"]
         self._final_text = None
         self._checkpoint("turn/start:accepted")
-        return self._wait_for_output()
+        return self._wait_for_output(timeout=self._turn_output_timeout_seconds)
 
     def continue_turn(
         self, message: ToolMessage | MultiToolMessage
@@ -402,7 +432,7 @@ class CodexAppServer:
             self.transport.respond(request_id, result)
             self.audit["tool_results_returned"] += 1
         self._checkpoint("item/tool/call:responded")
-        return self._wait_for_output()
+        return self._wait_for_output(timeout=self._turn_output_timeout_seconds)
 
     def require_complete_tool_delivery(self) -> None:
         """Fail unless every accepted dynamic call received its tau2 result."""
@@ -412,7 +442,9 @@ class CodexAppServer:
         complete = pending == 0 and accepted == returned
         self.audit["pending_dynamic_call_count"] = pending
         self.audit["tool_result_delivery_complete"] = complete
-        self._checkpoint("tool_delivery:verified" if complete else "tool_delivery:failed")
+        self._checkpoint(
+            "tool_delivery:verified" if complete else "tool_delivery:failed"
+        )
         if not complete:
             raise ProtocolError(
                 "incomplete dynamic-tool result delivery: "
@@ -420,10 +452,11 @@ class CodexAppServer:
             )
 
     def _wait_for_output(
-        self, timeout: float = TURN_OUTPUT_TIMEOUT_SECONDS
+        self, timeout: float | None = None
     ) -> tuple[str | list[ToolCall], bool]:
+        timeout = self._turn_output_timeout_seconds if timeout is None else timeout
         deadline = time.monotonic() + timeout
-        idle_deadline = time.monotonic() + TURN_OUTPUT_IDLE_TIMEOUT_SECONDS
+        idle_deadline = time.monotonic() + self._turn_output_idle_timeout_seconds
         calls: list[ToolCall] = []
         while True:
             remaining = deadline - time.monotonic()
@@ -438,7 +471,8 @@ class CodexAppServer:
                 raise ProtocolError(
                     "timed out waiting for Codex turn output; "
                     f"hard limit={timeout:g}s, idle limit="
-                    f"{TURN_OUTPUT_IDLE_TIMEOUT_SECONDS:g}s; last protocol method was "
+                    f"{self._turn_output_idle_timeout_seconds:g}s; "
+                    "last protocol method was "
                     f"{timeout_after!r}"
                 )
             try:
@@ -449,7 +483,7 @@ class CodexAppServer:
                 if calls:
                     return calls, False
                 continue
-            idle_deadline = time.monotonic() + TURN_OUTPUT_IDLE_TIMEOUT_SECONDS
+            idle_deadline = time.monotonic() + self._turn_output_idle_timeout_seconds
             if "transportError" in message:
                 raise ProtocolError(str(message["transportError"]))
             method = message.get("method")
@@ -487,10 +521,14 @@ class CodexAppServer:
                 if not isinstance(item, Mapping):
                     raise ProtocolError(f"{method} contained no item")
                 try:
-                    reject_native_item(item)
+                    reject_native_item(item, self._allowed_item_types)
                 except ProtocolError:
                     self.audit["native_capability_denied"] = True
                     raise
+                if item.get("type") == "contextCompaction":
+                    if method == "item/completed":
+                        self.audit["context_compaction_count"] += 1
+                    continue
                 if (
                     method == "item/completed"
                     and item.get("type") == "agentMessage"

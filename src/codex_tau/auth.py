@@ -64,9 +64,13 @@ def resolve_codex_command(repo_root: Path) -> list[str]:
     # launcher request Codex's absent x64 optional package.
     if platform.system() == "Darwin" and platform.machine() in {"arm64", "x86_64"}:
         arch = shutil.which("arch")
-        if arch and subprocess.run(
-            [arch, "-arm64", "/usr/bin/true"], capture_output=True, check=False
-        ).returncode == 0:
+        if (
+            arch
+            and subprocess.run(
+                [arch, "-arm64", "/usr/bin/true"], capture_output=True, check=False
+            ).returncode
+            == 0
+        ):
             command = [arch, "-arm64", *command]
     return command
 
@@ -86,7 +90,9 @@ def read_codex_version(command: list[str], env: Mapping[str, str] | None = None)
     match = re.fullmatch(r"codex-cli\s+([^\s]+)\s*", completed.stdout)
     if match is None or match.group(1) != CODEX_VERSION:
         observed = match.group(1) if match else completed.stdout.strip()
-        raise AuthError(f"Codex version mismatch: expected {CODEX_VERSION}, got {observed}")
+        raise AuthError(
+            f"Codex version mismatch: expected {CODEX_VERSION}, got {observed}"
+        )
     return match.group(1)
 
 
@@ -99,7 +105,9 @@ def require_chatgpt_account(result: Mapping[str, Any]) -> dict[str, Any]:
     if account_type != "chatgpt":
         raise AuthError(f"Codex account must be chatgpt, got {account_type!r}")
     if result.get("requiresOpenaiAuth") is not True:
-        raise AuthError("Codex app-server did not require managed OpenAI authentication")
+        raise AuthError(
+            "Codex app-server did not require managed OpenAI authentication"
+        )
     # Only non-secret account metadata may leave this boundary.
     return {
         "type": "chatgpt",
@@ -108,27 +116,34 @@ def require_chatgpt_account(result: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
-def require_model_catalog(result: Mapping[str, Any]) -> dict[str, Any]:
-    """Require a visible GPT-5.4 entry that explicitly advertises high."""
+def require_model_catalog(
+    result: Mapping[str, Any],
+    *,
+    model: str = "gpt-5.4",
+    reasoning_effort: str = "high",
+) -> dict[str, Any]:
+    """Require one visible model entry with the requested reasoning effort."""
     models = result.get("data")
     if not isinstance(models, list):
         raise AuthError("Codex model catalog response is malformed")
-    for model in models:
-        if not isinstance(model, Mapping):
+    for entry in models:
+        if not isinstance(entry, Mapping):
             continue
-        if model.get("model") != "gpt-5.4" and model.get("id") != "gpt-5.4":
+        if entry.get("model") != model and entry.get("id") != model:
             continue
-        efforts = model.get("supportedReasoningEfforts") or []
+        efforts = entry.get("supportedReasoningEfforts") or []
         values = {
             item.get("reasoningEffort") if isinstance(item, Mapping) else item
             for item in efforts
         }
-        if model.get("hidden") is True or "high" not in values:
-            raise AuthError("GPT-5.4 is hidden or does not advertise high reasoning")
+        if entry.get("hidden") is True or reasoning_effort not in values:
+            raise AuthError(
+                f"{model} is hidden or does not advertise {reasoning_effort} reasoning"
+            )
         return {
-            "requested": "gpt-5.4",
-            "observed": model.get("model") or model.get("id"),
-            "hidden": bool(model.get("hidden")),
+            "requested": model,
+            "observed": entry.get("model") or entry.get("id"),
+            "hidden": bool(entry.get("hidden")),
             "reasoning_efforts": sorted(str(value) for value in values if value),
         }
-    raise AuthError("GPT-5.4 is unavailable in the personal ChatGPT model catalog")
+    raise AuthError(f"{model} is unavailable in the personal ChatGPT model catalog")

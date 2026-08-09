@@ -19,15 +19,17 @@ In particular:
   fresh authorization for the exact local evaluation scope and expected cost.
 - Keep local run artifacts ignored unless publication is separately and
   explicitly authorized after a credential and size review. The exact Option
-  A `results.json` already tracked on this branch is a narrow exception for
-  internal metric calculation, not leaderboard preparation or submission.
+  A and Option B `results.json` files already tracked on this branch are narrow
+  exceptions for internal metric calculation, not leaderboard preparation or
+  submission.
 
-The repository intentionally provides `preflight` and bounded local `run`
-commands only. It provides no leaderboard submission command. Its exact
-configuration allowlist contains only the three alltools prompt-study matrices:
-train baseline, test baseline, and optimized test. Historical smoke, pilot,
-scaling, and terminal-use reference configs have been removed. Allowlisting
-validates configuration; it is not execution authorization.
+The repository provides `preflight`, bounded local `run`, one-shot
+`resume-interrupted`, and one-shot train-only `optimize` commands. It provides
+no leaderboard submission command. Its exact evaluation allowlist contains
+only the three alltools prompt-study matrices: train baseline, test baseline,
+and optimized test. Historical smoke, pilot, scaling, and terminal-use
+reference configs have been removed. Allowlisting validates configuration; it
+is not execution authorization.
 
 A consumed authorization covered two retained local-only `alltools` baseline
 matrices:
@@ -46,6 +48,20 @@ rerun. Both the original execution and retry authorizations are consumed.
 Because the test partition was used by the retained vanilla arm and earlier
 retired demos, the result is an adaptive retest, not a pristine held-out run.
 In every case, test trajectories must not feed prompt optimization.
+
+## Prompt optimization is one-shot
+
+`codex-tau optimize` is not an evaluation or submission path. One execution
+uses a fresh personal-ChatGPT app-server thread at GPT-5.6-Sol/max to inspect
+only the fixed 48-trace train packet and submit exactly one local candidate.
+It has no test access, candidate evaluation, selection loop, or automatic
+retry. It leaves the active prompt unchanged and writes only to the ignored
+`optimizer-runs/` directory.
+
+The command cannot do model work without fresh explicit authorization for one
+exact source and one attempt. Its implementation, a successful preflight, a
+failed attempt, or a retained candidate cannot create permission to retry,
+evaluate, promote, publish, or submit anything.
 
 Prior execution authority is consumed and does not cover a rerun, extra trial,
 other task ID, concurrency above 16, or one combined 97-task run. Any future

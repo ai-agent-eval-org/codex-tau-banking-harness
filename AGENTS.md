@@ -89,6 +89,14 @@ task_102
   validated maximum; do not increase it without
   a separately authorized, bounded fixed-matrix scaling validation. Never run
   one combined 97-task matrix or submit to a leaderboard.
+- The standalone `codex-tau optimize` command is model-bearing and likewise
+  requires fresh, explicit authorization for one exact train packet and one
+  optimizer attempt. Its presence is not standing authority. It must use a
+  fresh ephemeral app-server thread, personal ChatGPT authentication,
+  GPT-5.6-Sol/max, no Platform API key, no native Codex capability, and no
+  evidence outside the fixed train packet. It may emit one ignored local
+  candidate bundle; it must not modify the active optimized prompt, run an
+  evaluation, select candidates, publish artifacts, or authorize a later run.
 - An optimized prompt artifact and experiment config may be authored only
   after the fresh vanilla train run has completed. The prompt must be derived
   only from those train traces, then its repo-relative path and SHA-256 must be
@@ -101,11 +109,11 @@ task_102
   recovery record is present. The result is not a pristine held-out
   evaluation.
 - Do not commit raw runs, credentials, embedding caches, or large artifacts.
-  The sole explicit exception is the already-published, credential-scanned
-  Option A test file at
-  `runs/vanilla-test-alltools-20260808T215353Z/results.json`, authorized for
-  internal τ2 metric calculation. It is not submission authorization. Do not
-  add its adapter audits or treat the exception as authority for another run.
+  The narrow existing exceptions are the credential-scanned Option A and
+  Option B test `results.json` files already tracked under `runs/`, authorized
+  for internal τ2 metric calculation. They are not submission authorization.
+  Do not add their adapter audits, commit standalone optimizer candidates, or
+  treat either exception as authority for another run.
 - The presence of `resume-interrupted` implementation is not authorization to
   execute it. An interrupted trajectory may be retried only after fresh,
   explicit human authorization for that exact source run and one retry, encoded

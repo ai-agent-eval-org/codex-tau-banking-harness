@@ -20,12 +20,13 @@ This was a one-shot synthesis inspired by prompt-reflection research, not GEPA.
 There was no candidate population, mutation or selection loop, candidate
 evaluation, validation feedback, test feedback, or iterative revision.
 
-## Canonical optimizer instruction
+## Optimizer instruction provenance
 
 [`prompts/banking_knowledge/optimizer.md`](prompts/banking_knowledge/optimizer.md)
-is the exact optimizer instruction used for this pass. Its SHA-256 is:
+is now the instruction used by the standalone `codex-tau optimize` command.
+Its SHA-256 is:
 
-`9241b834b4c6a3b58301a95054284d1b070884364e5c764b32c07858f8eef917`
+`575b12d0f9fbc928c524db87c186444a5d8beb62d9422c434d8407b7df2cb149`
 
 The instruction makes tool descriptions and schemas first-class evidence. It
 requires complete trace and tool coverage, causal failure analysis, successful
@@ -33,6 +34,35 @@ traces as regression controls, one synthesis, and a complete replacement for
 the baseline `<instructions>` plus `<policy>` prompt. It prohibits
 trace-specific values, hidden evaluator material, test feedback, prior
 candidates, and performance claims in the resulting banking prompt.
+
+The active [`prompts/banking_knowledge/optimized.md`](prompts/banking_knowledge/optimized.md)
+predates this standalone interface. The exact optimizer instruction that
+produced that historical prompt is preserved at commit
+`a829bd3f4bb79af2a6ae5129b970493434d3f38e`; its SHA-256 is
+`9241b834b4c6a3b58301a95054284d1b070884364e5c764b32c07858f8eef917`.
+The current instruction file must not be cited as the bytes used for that
+historical synthesis.
+
+## Standalone execution
+
+```bash
+uv run codex-tau optimize --preflight-only
+uv run codex-tau optimize
+```
+
+The inference command prepares the packet internally, creates one fresh
+ephemeral app-server thread using personal ChatGPT authentication and
+GPT-5.6-Sol/max, and exposes only seven audited packet tools. It requires all
+48 traces and all 17 tool contracts to be fully read and analyzed, then requires
+the complete external ledger to be reread before accepting one report and one
+replacement prompt. Trace contents are untrusted evidence, not instructions.
+App-server context compaction is counted as a lifecycle event and adds no
+native capability.
+
+The command has no candidate search, automatic retry, or evaluation step. Its
+ignored `optimizer-runs/one-shot-<timestamp>/` bundle is a candidate only; the
+command does not overwrite the active prompt or authorize promotion, testing,
+publication, or submission.
 
 ## Leakage-safe evidence export
 
@@ -64,7 +94,7 @@ failures, 17/17 tools, the frozen split digest
 and tool-schema digest
 `3e895cf7dec550977f7b75242e3c34d961ebe61c33ec34159803874117789801`.
 
-## Synthesis
+## Historical synthesis
 
 A clean GPT-5.6-Sol subagent received only the leakage-safe packet and a
 completed coverage ledger. It inspected all 48 traces and all 17 tool
