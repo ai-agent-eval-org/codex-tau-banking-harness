@@ -66,9 +66,11 @@ structured alltools schemas, model, reasoning, simulator, task matrix, step
 limit, authentication boundary, and empty developer instructions remain
 fixed.
 
-The current full optimized prompt has not been evaluated. A future run on the
-same 49-task test partition would be an adaptive retest because the partition
-was previously used for the retired demo. It cannot be described as a pristine
-held-out result and is not comparable with the external terminal-use artifact.
-The previously disclosed exposure of `task_002` and `task_008` remains an
-additional contamination caveat.
+The current full optimized prompt was evaluated once on the same 49-task test
+partition as the adaptive retest `optimized-test-alltools-20260809T021853Z`.
+It scored 23/49 (46.9388%), versus 15/49 (30.6122%) for the vanilla alltools
+test arm. Because the partition was previously used for the retired demo, this
+is reused-holdout evidence rather than a pristine held-out result. It is also
+not comparable with the external terminal-use artifact. The previously
+disclosed exposure of `task_002` and `task_008` remains an additional
+contamination caveat.

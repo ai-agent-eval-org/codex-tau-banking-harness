@@ -19,6 +19,26 @@ was used. Earlier pilots and the retained vanilla test run were excluded from
 the review. The previous instruction-only optimized prompt and its two ignored
 local result directories were retired as demo artifacts before this pass.
 
+## Effective optimization instruction
+
+The human instruction, normalized after the follow-up clarifications, was:
+
+> Review the 48 fresh vanilla train trajectories once, using subagents for the
+> qualitative review and synthesis. Treat those train traces as the only
+> optimization evidence. Produce one general replacement for the complete
+> shared `<instructions>` plus `<policy>` system prompt. Make changes that
+> address recurring process failures and generalize across the banking domain;
+> do not encode task-specific answers. GEPA is inspiration only: do not run
+> GEPA, search candidates, iterate against evaluations, or use validation/test
+> feedback. Exclude pilots and every test task, trajectory, reward, and audit.
+> Preserve the unmodified structured alltools schemas and all runtime, model,
+> authentication, and developer-instruction boundaries. Freeze the single
+> resulting prompt before testing it.
+
+There was no separate hidden optimizer-prompt artifact. This instruction was
+provided through the working conversation and was not added to the evaluated
+agent's prompt.
+
 ## Optimization unit
 
 The optimization unit is now the complete textual system prompt:
@@ -107,16 +127,35 @@ resource isolation, verification reuse, and exact staged-transfer counting.
 
 ## Evaluation status and integrity boundary
 
-The current full optimized prompt has **not** been evaluated. No model-bearing
-run was launched during this reoptimization.
+After the prompt was frozen, the explicitly authorized adaptive retest
+`optimized-test-alltools-20260809T021853Z` ran the 49 frozen test tasks once at
+seed 300 and concurrency 16. It used harness commit
+`a7a86e65774158caf9df60c19a8cf3807893640e`, the frozen optimized file SHA-256
+`e113c6ef7a8e0ee829089bd57c08d65bc9bc9c2fe76ad96e7f8c7c993d0c559e`,
+GPT-5.4/high through personal ChatGPT authentication, and GPT-5.2/low for the
+official simulator.
 
-The retained vanilla test run was already evaluated once, and an earlier demo
-prompt was also evaluated on that same partition before its local results were
-retired. Therefore, another optimized run on the 49 test tasks would be an
-adaptive reuse of the partition, not a pristine held-out evaluation. It would
-require fresh, explicit authorization for the exact matrix and cost and must be
-labeled accordingly. Test trajectories must still never be opened for prompt
-feedback.
+The adaptive retest scored **23/49 (46.9388%)**, compared with the retained
+vanilla test run's **15/49 (30.6122%)**: **eight additional passes** and an
+observed increase of **16.3265 percentage points**. It completed in
+**20m22.119s**. All 49 trajectories ended with `user_stop`; none ended in an
+infrastructure or unexpected error. All 1,970 accepted dynamic-tool calls had
+their 1,970 results returned. All 49 adapter audits verified the frozen prompt,
+ChatGPT authentication, GPT-5.4/high, no reroute, no instruction sources,
+explicit empty developer instructions, no Codex-native capability event, and
+complete tool-result delivery.
+
+Only aggregate score, completion, and integrity fields were inspected. No test
+trajectory, per-task reward, or individual audit content was opened for prompt
+feedback. The matching 23/49 aggregate from the retired instruction-only demo
+is a separate historical run and must not be conflated with this full-prompt
+adaptive retest.
+
+Because the retained vanilla test and retired demo had already used this
+partition, the result is reused-holdout evidence, not a pristine held-out
+evaluation. The execution authority is consumed. Any future run requires fresh
+explicit authorization and remains another adaptive retest; test feedback must
+never be used for prompt development.
 
 The earlier infrastructure exposure of `task_002` and `task_008` remains a
 contamination caveat for any test-set interpretation. Nothing in this

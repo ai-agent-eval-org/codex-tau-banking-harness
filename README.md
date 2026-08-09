@@ -242,10 +242,23 @@ uv run codex-tau preflight experiments/optimized-test-alltools.toml
 uv run codex-tau run experiments/optimized-test-alltools.toml
 ```
 
-The current full optimized prompt has not been evaluated. Because the same test
-partition was used by the earlier demo, a future run on it would be an adaptive
-retest rather than a pristine held-out evaluation and requires fresh explicit
-authorization and disclosure. See
+The current full prompt was evaluated once as the explicitly authorized
+adaptive retest `optimized-test-alltools-20260809T021853Z`. It scored **23/49
+(46.9388%)**, compared with the vanilla test run's **15/49 (30.6122%)**: eight
+additional passes and an observed increase of 16.3265 percentage points. The
+run completed in 20m22.119s at concurrency 16. All 49 trajectories ended with
+`user_stop`, there were no infrastructure errors, and all 1,970 accepted
+dynamic-tool calls had their 1,970 results returned. Every adapter audit
+verified ChatGPT authentication, GPT-5.4/high, the frozen prompt hashes, no
+model rerouting, no instruction-source injection, no Codex-native capability
+use, and complete tool-result delivery.
+
+This is reused-holdout evidence, not a pristine held-out result: the same test
+partition had been used by the retired instruction-only demo. Only aggregate
+score, completion, and integrity fields were inspected; no test trajectory,
+per-task reward, or individual audit content was opened for prompt feedback.
+The run's execution authority is consumed, its artifacts remain ignored and
+local, and the result authorizes no publication or submission. See
 [PROMPT_OPTIMIZATION.md](PROMPT_OPTIMIZATION.md).
 
 ### Consumed interrupted-run recovery

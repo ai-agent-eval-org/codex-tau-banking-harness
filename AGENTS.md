@@ -92,9 +92,12 @@ task_102
 - An optimized prompt artifact and experiment config may be authored only
   after the fresh vanilla train run has completed. The prompt must be derived
   only from those train traces, then its repo-relative path and SHA-256 must be
-  frozen before an evaluation. The current full prompt has not been evaluated.
-  Any future run on the already-used test partition is an adaptive retest, not
-  a pristine held-out evaluation, and must be disclosed as such.
+  frozen before an evaluation. The current full prompt was evaluated once on
+  the 49-task test partition as the disclosed adaptive retest
+  `optimized-test-alltools-20260809T021853Z`; that execution authority is
+  consumed. Any future run on the already-used test partition is another
+  adaptive retest, not a pristine held-out evaluation, and requires fresh
+  authorization and disclosure.
 - Do not commit raw runs, credentials, embedding caches, or large artifacts.
 - The presence of `resume-interrupted` implementation is not authorization to
   execute it. An interrupted trajectory may be retried only after fresh,
