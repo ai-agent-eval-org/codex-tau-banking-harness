@@ -35,6 +35,12 @@ app-server item type and is counted only as a lifecycle event; it grants no
 filesystem, network, memory, or other native capability. The evaluated-agent
 allowlist does not accept context compaction.
 
+Official generic `warning` notifications are accepted only when their payload
+is well-formed and scoped to the current thread. They are non-fatal lifecycle
+diagnostics, not capabilities. The audit retains only their count and SHA-256,
+never potentially sensitive warning text; malformed or cross-thread warnings
+remain fatal.
+
 ## Artifact redaction
 
 Manifests contain hashes, non-secret plan/rate-limit metadata, version and Git

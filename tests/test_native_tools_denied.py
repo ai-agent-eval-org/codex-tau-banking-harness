@@ -249,6 +249,67 @@ def test_thread_settings_drift_fails_closed(field: str, value: object) -> None:
     assert runtime.audit["native_capability_denied"] is True
 
 
+def test_official_runtime_warning_is_hashed_and_nonfatal() -> None:
+    transport = FakeTransport(
+        [
+            {
+                "method": "warning",
+                "params": {
+                    "threadId": "thread-1",
+                    "message": "A non-fatal app-server warning.",
+                },
+            },
+            {
+                "method": "item/completed",
+                "params": {
+                    "item": {
+                        "type": "agentMessage",
+                        "phase": "final_answer",
+                        "text": "done",
+                    }
+                },
+            },
+            {
+                "method": "turn/completed",
+                "params": {"turn": {"status": "completed"}},
+            },
+        ]
+    )
+    runtime = CodexAppServer(
+        repo_root=Path("."),
+        tools=[],
+        system_prompt="prompt",
+        transport=transport,  # type: ignore[arg-type]
+    )
+    runtime._thread_id = "thread-1"
+    assert runtime._wait_for_output() == ("done", True)
+    assert runtime.audit["warning_count"] == 1
+    assert runtime.audit["warning_sha256"] == [
+        "525d5c6e08db3d16b8ab7602300ef32ba71a6202a46f541bd81a9a29d16bc411"
+    ]
+
+
+@pytest.mark.parametrize(
+    "params",
+    [
+        {"threadId": "another-thread", "message": "warning"},
+        {"threadId": "thread-1", "message": ""},
+        {"threadId": "thread-1", "message": 123},
+    ],
+)
+def test_malformed_or_misscoped_warning_fails_closed(params: dict) -> None:
+    runtime = CodexAppServer(
+        repo_root=Path("."),
+        tools=[],
+        system_prompt="prompt",
+        transport=FakeTransport([{"method": "warning", "params": params}]),  # type: ignore[arg-type]
+    )
+    runtime._thread_id = "thread-1"
+    with pytest.raises(ProtocolError, match="warning"):
+        runtime._wait_for_output()
+    assert runtime.audit["native_capability_denied"] is True
+
+
 def test_disabled_remote_control_status_is_lifecycle_only() -> None:
     transport = FakeTransport(
         [

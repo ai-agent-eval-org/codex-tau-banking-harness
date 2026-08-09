@@ -288,6 +288,8 @@ class CodexAppServer:
             "thread_settings_verified": False,
             "turns_completed": 0,
             "turns_started": 0,
+            "warning_count": 0,
+            "warning_sha256": [],
         }
 
         if transport is not None:
@@ -434,6 +436,20 @@ class CodexAppServer:
         self.audit["thread_settings_verified"] = True
         self._checkpoint("thread/settings/updated:verified")
 
+    def _accept_warning(self, params: Mapping[str, Any]) -> None:
+        """Audit an official non-fatal runtime warning without retaining its text."""
+        thread_id = params.get("threadId")
+        message = params.get("message")
+        if thread_id not in {None, self._thread_id}:
+            raise ProtocolError("app-server warning is mis-scoped")
+        if not isinstance(message, str) or not message or len(message) > 10_000:
+            raise ProtocolError("app-server warning is malformed")
+        self.audit["warning_count"] += 1
+        self.audit["warning_sha256"].append(
+            hashlib.sha256(message.encode()).hexdigest()
+        )
+        self._checkpoint("warning:audited")
+
     def verify_effective_thread_settings(self, timeout: float = 30) -> None:
         """Exercise and verify app-server's settings lifecycle without a model turn."""
         if self._thread_id is None or self._expected_cwd is None:
@@ -483,6 +499,13 @@ class CodexAppServer:
                     raise ProtocolError(
                         f"Codex remote control was not disabled: {status!r}"
                     )
+                continue
+            if method == "warning":
+                try:
+                    self._accept_warning(params)
+                except ProtocolError:
+                    self.audit["native_capability_denied"] = True
+                    raise
                 continue
             if method in {
                 "thread/started",
@@ -620,6 +643,13 @@ class CodexAppServer:
             if method == "thread/settings/updated":
                 try:
                     self._accept_thread_settings_update(params)
+                except ProtocolError:
+                    self.audit["native_capability_denied"] = True
+                    raise
+                continue
+            if method == "warning":
+                try:
+                    self._accept_warning(params)
                 except ProtocolError:
                     self.audit["native_capability_denied"] = True
                     raise
